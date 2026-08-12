@@ -504,7 +504,7 @@ async function main() {
   fs.writeFileSync(reportPath, JSON.stringify(finalReport, null, 2));
   console.log(`\nRedacted run report written to ${path.relative(ROOT, reportPath)}`);
 
-  const mdReportPath = path.join(reportDir, `${runId}.md`);
+  const mdReportPath = path.join(reportDir, `summary_${runId.replace(/^run_/, '')}.md`);
   fs.writeFileSync(mdReportPath, renderMarkdownReport(finalReport, profilesConfig.benchmark_coverage));
   console.log(`Human-readable summary written to ${path.relative(ROOT, mdReportPath)}`);
 }
