@@ -1,0 +1,149 @@
+{
+  "run_id": "run_1786549285383_sb69ni",
+  "generated_at": "2026-08-12T15:41:58.373Z",
+  "profiles": [
+    {
+      "label": "My vehicle (2025 Honda Civic 4dr)",
+      "route_plan": {
+        "profile_label": "My vehicle (2025 Honda Civic 4dr)",
+        "routes": [
+          {
+            "registry_id": "local_independent_broker",
+            "priority": 1,
+            "reason": "Only registry entry in this build with a fully specified, active_mvp status, product_scope (standard_PPA), quote flow, and automation recipe. Fits this profile: personal-use, owned, new 2025 Honda Civic, standard daily-driver risk — clearly within standard_PPA scope, no high-net-worth/collector/commercial signals present.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8"
+            }
+          }
+        ],
+        "excluded_routes": [
+          {
+            "registry_id": "onlia",
+            "reason": "Listed in mvp_routes but has no corresponding entry in registry/market_registry.json's routes[] array — no quote_url, requirements, status, or distinct_rate_source_id to plan against. Still unresolved in the registry as supplied this run."
+          },
+          {
+            "registry_id": "rates_ca",
+            "reason": "Listed in mvp_routes but has no corresponding entry in registry/market_registry.json's routes[] array — no quote_url, requirements, status, or distinct_rate_source_id to plan against. Still unresolved in the registry as supplied this run. Note: when it does resolve, check for panel overlap with LowestRates.ca before planning both."
+          },
+          {
+            "registry_id": "sonnet",
+            "reason": "Listed in mvp_routes but only appears as an underwriting-group seed (Definity/Sonnet legal entity note) — no route-level entry (quote_url, requirements, status) exists to plan against yet. Still unresolved in the registry as supplied this run."
+          },
+          {
+            "registry_id": "td_insurance",
+            "reason": "Listed in mvp_routes but only appears as an underwriting-group seed (TD legal entities: Primmum, Security National, TD General) — no route-level entry (quote_url, requirements, status) exists to plan against yet. Still unresolved in the registry as supplied this run."
+          }
+        ],
+        "notes": "Heads up: of the 5 routes the brief flags as MVP-critical, only local_independent_broker (Staebler) actually has a complete route record in the registry right now — quote_url, requirements, automation notes, status all present. Onlia, Rates.ca, Sonnet, and TD Insurance are named as MVP targets but the registry has no route-level entries for them yet (Sonnet and TD only show up as underwriting-group/legal-entity seeds, which isn't the same as a validated route with a quoting mechanism). I'm not substituting anything else in for these — flagging so you know 4 of 5 intended MVP channels aren't attemptable this run until those registry entries get built out.\n\nAlso: this profile came through with no coverage_configuration fields at all (liability limit, deductibles, endorsements, etc.). Staebler's broker flow may still surface a human who asks for that, but I have nothing to hand it as explicit coverage parameters, so I only passed vehicle/use/licence/history fields. Worth confirming that's expected before this goes to the worker.\n\nRemember Staebler's terminal status should come back as manual_handoff/callback_required per its automation_notes — not a firm quote. Don't let anything downstream present whatever the broker eventually calls back with as an instant quote result equivalent to the automated routes, once those exist."
+      },
+      "worker_results": [
+        {
+          "registry_id": "local_independent_broker",
+          "status": "callback_required",
+          "failure_reason": null,
+          "outcome": {
+            "exact_quote_or_estimate": "estimate",
+            "eligibility_result": "pending_broker_callback",
+            "next_action": "Await a callback from a Staebler broker — no price or coverage is disclosed at this step."
+          },
+          "evidence": {
+            "timestamp": "2026-08-12T15:41:58.382Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/local_independent_broker/75aa29e8-9227-4470-bc55-eb1dbca46d42/1786549480726_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "My vehicle (2025 Honda Civic 4dr)",
+        "results": [
+          {
+            "registry_id": "local_independent_broker",
+            "status": "callback_required",
+            "failure_reason": null,
+            "outcome": {
+              "exact_quote_or_estimate": "estimate",
+              "eligibility_result": "pending_broker_callback",
+              "next_action": "Await a callback from a Staebler broker — no price or coverage is disclosed at this step."
+            },
+            "variance_from_benchmark": "Not applicable — no premium or coverage configuration was disclosed at this step, so there is nothing to compare against the benchmark yet.",
+            "dedup_notes": "Single result for this run; no duplicate rate source detected.",
+            "evidence": {
+              "timestamp": "2026-08-12T15:41:58.382Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/local_independent_broker/75aa29e8-9227-4470-bc55-eb1dbca46d42/1786549480726_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "Only one route came back this run: the local independent broker (Staebler-style channel), and it didn't produce a quote — it's sitting at \"callback_required.\" That means the broker portal captured your submission but is holding the actual price and coverage details for a human to call you back with. There's no premium to show, no coverage to check against your benchmark (2026-09-01 effective, $2M liability, standard accident benefits, DCPD included, collision/comp $500 deductible, OPCF44R, winter tire discount), and nothing here counts toward comparable market coverage yet.\\n\\nBottom line: zero comparable quotes so far this run, one pending callback. Nothing to compare, nothing to rank, nothing suitable to recommend — just a waiting item. I'll flag it again once/if the broker actually responds with numbers.",
+        "gaps": [
+          "No routes returned an actual firm quote or even a disclosed estimate this run — only one route attempted, and it's stuck at pending broker callback.",
+          "Coverage comparability against the benchmark (liability limit, accident benefits, deductibles, OPCF44R, winter tire discount) cannot be assessed because no coverage details were disclosed.",
+          "market_completion and comparable_quote_yield are both 0 for this run — no market relationships were actually priced yet.",
+          "The local_independent_broker result is an estimate-track callback promise, not a firm quote — do not treat it as pricing signal until a real quote or itemized estimate comes back.",
+          "Only one result was provided this run, so no duplicate-detection or cross-route comparison was possible; broader market coverage from other planned routes is still unverified/pending."
+        ]
+      }
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 6984,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2954,
+          "output_tokens_details": {
+            "thinking_tokens": 1429
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:My vehicle (2025 Honda Civic 4dr)",
+        "usage": {
+          "input_tokens": 3773,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1837,
+          "output_tokens_details": {
+            "thinking_tokens": 762
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 15548
+  }
+}

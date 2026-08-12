@@ -53,8 +53,42 @@
           "profile_label": { "type": "string" },
           "results": {
             "type": "array",
-            "description": "Each item mirrors schema/quote_result_schema.json#result, enriched with variance_from_benchmark and any dedup notes.",
-            "items": { "type": "object" }
+            "description": "Each item mirrors schema/quote_result_schema.json#result, enriched with dedup notes.",
+            "items": {
+              "type": "object",
+              "required": ["registry_id", "status", "outcome", "price", "coverage", "discounts"],
+              "properties": {
+                "registry_id": { "type": "string" },
+                "status": { "type": "string", "description": "One of schema/quote_result_schema.json#status_enum." },
+                "outcome": { "type": "object" },
+                "price": {
+                  "type": "object",
+                  "required": ["annual_premium"],
+                  "properties": {
+                    "annual_premium": { "type": ["number", "null"], "description": "null if no premium was disclosed at this step — never guessed." }
+                  }
+                },
+                "coverage": {
+                  "type": "object",
+                  "required": ["deductible_match", "additional_coverage", "variance_from_benchmark"],
+                  "properties": {
+                    "deductible_match": { "type": "string", "description": "'matches_benchmark', a concrete stated difference (e.g. '$1,000 collision/comprehensive deductible vs. $500 benchmark'), or 'not_disclosed'." },
+                    "additional_coverage": { "type": "array", "items": { "type": "string" }, "description": "Coverage included beyond the benchmark (e.g. 'roadside assistance', 'accident forgiveness'). Empty array if none observed — never omit to mean 'none'." },
+                    "variance_from_benchmark": { "type": "array", "items": { "type": "string" }, "description": "Every other concrete difference from the benchmark, one short statement each. Empty array only if coverage was confirmed to match exactly." }
+                  }
+                },
+                "discounts": {
+                  "type": "object",
+                  "required": ["applied", "disclosed"],
+                  "properties": {
+                    "applied": { "type": "array", "items": { "type": "string" }, "description": "Discounts explicitly confirmed as applied (e.g. 'winter tires'). Empty array if none confirmed." },
+                    "disclosed": { "type": "boolean", "description": "false if the route never disclosed discount info at this step — distinct from disclosing zero discounts applied." }
+                  }
+                },
+                "dedup_notes": { "type": "string" },
+                "evidence": { "type": "object" }
+              }
+            }
           },
           "metrics": {
             "type": "object",

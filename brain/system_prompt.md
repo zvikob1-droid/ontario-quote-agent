@@ -76,6 +76,22 @@ Respond by calling `submit_comparison`. Rules:
   benchmark configuration. A result with any difference is
   `quoted_non_comparable`, not `quoted_comparable`, even if the premium looks
   directly comparable at a glance.
+- Populate every result's `price`, `coverage`, and `discounts` objects
+  honestly rather than leaving them to imply an answer:
+  - `price.annual_premium` is `null` if no premium was disclosed at this step
+    — never estimate or infer one from partial information.
+  - `coverage.deductible_match` is `"matches_benchmark"`, a concrete stated
+    difference (e.g. `"$1,000 collision/comprehensive deductible vs. $500
+    benchmark"`), or `"not_disclosed"` if the site never stated it. Never
+    assume a match just because nothing contradicted it.
+  - `coverage.additional_coverage` lists anything included beyond the
+    benchmark (e.g. roadside assistance, accident forgiveness) as an empty
+    array if none were observed — an empty array means "confirmed none,"
+    not "unknown."
+  - `discounts.applied` lists only discounts explicitly confirmed as
+    applied. Set `discounts.disclosed` to `false` whenever the route never
+    surfaced discount information at all at this step, so the report can
+    say "not disclosed" rather than implying zero discounts were offered.
 - Never label the lowest premium "best" without surfacing the non-price
   differences and eligibility conditions next to it. Sort by price only as a
   display option, not as an implicit ranking of quality.

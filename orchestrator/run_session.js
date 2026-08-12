@@ -12,8 +12,10 @@
  *   4. POST the redacted results to n8n's oqa-compare webhook — Claude
  *      normalizes and compares them.
  *   5. Print the summary and write a redacted run report to
- *      docs/run_reports/<run_id>.json — this file is safe to commit and is
- *      one of the challenge submission deliverables.
+ *      docs/run_reports/<run_id>.json (machine-shaped, for reuse/debugging)
+ *      and docs/run_reports/<run_id>.md (the human-readable version of the
+ *      same data — this is the one to actually read). Both are safe to
+ *      commit and are among the challenge submission deliverables.
  *
  * Nothing sensitive passes through this script or through n8n/Claude at any
  * point — see docs/ARCHITECTURE.md.
@@ -203,6 +205,103 @@ async function postJsonWithRetry(url, body, { timeoutMs, retries = N8N_MAX_RETRI
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
+}
+
+/** Turns the flat "coverage_configuration.xyz" -> value benchmark object into one readable line. */
+function formatBenchmarkCoverage(benchmark) {
+  if (!benchmark) return 'Not specified.';
+  const b = (key) => benchmark[`coverage_configuration.${key}`];
+  const parts = [];
+  if (b('third_party_liability_limit') != null) parts.push(`$${Number(b('third_party_liability_limit')).toLocaleString()} third-party liability`);
+  if (b('accident_benefits_selection')) parts.push(String(b('accident_benefits_selection')).replace(/_/g, ' '));
+  if (b('dcpd')) parts.push(`DCPD ${b('dcpd')}`);
+  if (b('own_damage_coverage')) parts.push(String(b('own_damage_coverage')).replace(/_/g, ' '));
+  if (Array.isArray(b('endorsements')) && b('endorsements').length > 0) parts.push(`Endorsements: ${b('endorsements').join(', ')}`);
+  if (Array.isArray(b('discounts_to_request')) && b('discounts_to_request').length > 0) parts.push(`Discounts requested: ${b('discounts_to_request').map((d) => String(d).replace(/_/g, ' ')).join(', ')}`);
+  return parts.length > 0 ? parts.join(' | ') : 'Not specified.';
+}
+
+/**
+ * Renders a compact, human-readable summary from the same finalReport data
+ * the JSON file gets — the .json is the full record (for reuse/debugging),
+ * this is the short version meant to actually be read: what vehicle, which
+ * routes, what came back, and how each result differs from what was asked
+ * for. Gaps/planning-notes/metrics stay JSON-only by design, not repeated
+ * here. No new Claude call.
+ */
+function renderMarkdownReport(finalReport, benchmarkCoverage) {
+  // For table cells: a real or literal newline would break Markdown table
+  // syntax, so collapse to a space rather than a line break.
+  const cleanInline = (s) => (typeof s === 'string' ? s.replace(/\\n/g, ' ').replace(/\n/g, ' ').trim() : s);
+  const lines = [];
+  lines.push(`# Ontario Quote Agent — Run Report`);
+  lines.push('');
+  lines.push(`Run: \`${finalReport.run_id}\` · Generated: ${finalReport.generated_at}`);
+  lines.push('');
+  lines.push(`**Requested coverage:** ${formatBenchmarkCoverage(benchmarkCoverage)}`);
+  const effectiveDate = benchmarkCoverage && benchmarkCoverage['coverage_configuration.requested_effective_date'];
+  if (effectiveDate) lines.push(`**Effective date:** ${effectiveDate}`);
+  lines.push('');
+
+  for (const profile of finalReport.profiles) {
+    lines.push(`## ${profile.label}`);
+    lines.push('');
+
+    const attempted = (profile.worker_results || []).map((r) => r.registry_id);
+    lines.push(`**Routes attempted:** ${attempted.length > 0 ? attempted.join(', ') : 'none'}`);
+    lines.push('');
+
+    if (profile.comparison_error) {
+      lines.push(`_Comparison could not be completed: ${profile.comparison_error}_`);
+      lines.push('');
+      continue;
+    }
+
+    const results = profile.comparison && profile.comparison.results;
+    if (!results || results.length === 0) {
+      lines.push('_No results to report._');
+      lines.push('');
+      continue;
+    }
+
+    lines.push('| Route | Status | Annual Premium | Discounts | Additional Coverage | Deductible | Other Coverage Differences |');
+    lines.push('|---|---|---|---|---|---|---|');
+    for (const r of results) {
+      const premium = r.price && r.price.annual_premium != null ? `$${Number(r.price.annual_premium).toLocaleString()}` : 'Not disclosed';
+
+      let discounts = '—';
+      if (r.discounts) {
+        if (r.discounts.disclosed === false) discounts = 'Not disclosed';
+        else if (Array.isArray(r.discounts.applied)) discounts = r.discounts.applied.length > 0 ? r.discounts.applied.join(', ') : 'None applied';
+      }
+
+      let additionalCoverage = '—';
+      if (r.coverage && Array.isArray(r.coverage.additional_coverage)) {
+        additionalCoverage = r.coverage.additional_coverage.length > 0 ? r.coverage.additional_coverage.join(', ') : 'None';
+      }
+
+      let deductible = '—';
+      if (r.coverage && r.coverage.deductible_match) {
+        deductible = r.coverage.deductible_match === 'matches_benchmark' ? 'Matches benchmark'
+          : r.coverage.deductible_match === 'not_disclosed' ? 'Not disclosed'
+          : r.coverage.deductible_match;
+      }
+
+      let otherDiff = '—';
+      if (r.coverage && Array.isArray(r.coverage.variance_from_benchmark)) {
+        otherDiff = r.coverage.variance_from_benchmark.length > 0 ? r.coverage.variance_from_benchmark.join('; ') : 'None';
+      } else if (typeof r.variance_from_benchmark === 'string') {
+        // Fallback for reports generated before results carried structured
+        // price/coverage/discounts fields.
+        otherDiff = r.variance_from_benchmark;
+      }
+
+      lines.push(`| ${r.registry_id} | ${r.status} | ${cleanInline(premium)} | ${cleanInline(discounts)} | ${cleanInline(additionalCoverage)} | ${cleanInline(deductible)} | ${cleanInline(otherDiff)} |`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
 }
 
 async function main() {
@@ -404,6 +503,10 @@ async function main() {
   const reportPath = path.join(reportDir, `${runId}.json`);
   fs.writeFileSync(reportPath, JSON.stringify(finalReport, null, 2));
   console.log(`\nRedacted run report written to ${path.relative(ROOT, reportPath)}`);
+
+  const mdReportPath = path.join(reportDir, `${runId}.md`);
+  fs.writeFileSync(mdReportPath, renderMarkdownReport(finalReport, profilesConfig.benchmark_coverage));
+  console.log(`Human-readable summary written to ${path.relative(ROOT, mdReportPath)}`);
 }
 
 main().catch((e) => {

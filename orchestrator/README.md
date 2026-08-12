@@ -43,8 +43,10 @@ I'm prompted once for my vault passphrase. The script then:
 4. Asks n8n's `oqa-compare` webhook to normalize and compare the results (via
    Claude).
 5. Prints a summary per profile and writes the full run to
-   `docs/run_reports/<run_id>.json` — safe to commit, since everything in it
-   is already redacted/non-sensitive by construction.
+   `docs/run_reports/<run_id>.json` (machine-shaped, for reuse/debugging) and
+   `docs/run_reports/<run_id>.md` (the same data as a plain-English summary —
+   this is the one to actually read). Both are safe to commit, since
+   everything in them is already redacted/non-sensitive by construction.
 
 If the brain ever flags something anomalous (`flag_new_field`) — e.g. it
 thinks a sensitive-looking value leaked into a `planning_safe` field — the
