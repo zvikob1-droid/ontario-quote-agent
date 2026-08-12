@@ -86,10 +86,16 @@ module.exports = {
     const maskSelectors = [];
 
     // ---- Entry: postal code ----
+    // Confirmed live (2026-08-12 real run): #postal-code-input matches 3
+    // elements on this page, not 1 — plausibly duplicate markup across
+    // responsive breakpoints. Playwright's default "first match" picked a
+    // non-visible one and timed out waiting for it to become interactable.
+    // :visible filters to the one actually on screen. If other selectors in
+    // this recipe hit the same issue on a future run, apply the same fix.
     await page.goto(module.exports.meta.entryUrl, { waitUntil: 'domcontentloaded' });
-    await lib.fillFromVault(page, '#postal-code-input', 'primary_address.postal_code', vaultPassphrase);
-    maskSelectors.push('#postal-code-input');
-    await page.click('#submitBtn');
+    await lib.fillFromVault(page, '#postal-code-input:visible', 'primary_address.postal_code', vaultPassphrase);
+    maskSelectors.push('#postal-code-input:visible');
+    await page.click('#submitBtn:visible');
     await page.waitForURL('**/autoquote/on/vehicle');
 
     // ---- Vehicle Info ----

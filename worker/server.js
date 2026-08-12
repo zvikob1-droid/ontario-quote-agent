@@ -117,13 +117,23 @@ async function runRoute(recipes, routeId, params, vaultPassphrase) {
     logger.log('route_ended_with_error', { routeId, runId, status, errorType: e.name || 'Error', durationMs: elapsed() });
   }
 
+  // Always merge in every selector recipe_lib itself automatically tracked
+  // as vault_only for this page, regardless of what the recipe/error
+  // explicitly reported — this is the safety net for an unexpected failure
+  // that doesn't carry its own maskSelectors (see recipe_lib.js's
+  // trackMaskSelector for why relying only on explicit reporting isn't
+  // enough).
+  const explicitMaskSelectors = (result && result.maskSelectors) || [];
+  const trackedMaskSelectors = lib.getTrackedMaskSelectors(page);
+  const maskSelectors = Array.from(new Set([...explicitMaskSelectors, ...trackedMaskSelectors]));
+
   let evidenceRef = null;
   try {
     evidenceRef = await lib.captureRedactedEvidence(page, {
       routeId,
       runId,
       label: 'final',
-      maskSelectors: (result && result.maskSelectors) || [],
+      maskSelectors,
     });
   } catch (e) {
     logger.log('evidence_capture_failed', { routeId, runId, message: e.message });

@@ -251,6 +251,15 @@ function renderMarkdownReport(finalReport, benchmarkCoverage) {
     lines.push(`**Routes attempted:** ${attempted.length > 0 ? attempted.join(', ') : 'none'}`);
     lines.push('');
 
+    if (profile.flags && profile.flags.length > 0) {
+      lines.push('> **⚠ Safety flag raised during comparison** — the brain detected something anomalous ' +
+        '(e.g. a value that looked sensitive where only planning_safe data should be) and stopped short ' +
+        'of using it. This is the privacy safeguard working, not a routine gap — review before trusting ' +
+        'this run\'s data flow.');
+      for (const f of profile.flags) lines.push(`> - ${cleanInline(f.observed_at)} — ${cleanInline(f.description)}`);
+      lines.push('');
+    }
+
     if (profile.comparison_error) {
       lines.push(`_Comparison could not be completed: ${profile.comparison_error}_`);
       lines.push('');
@@ -355,12 +364,18 @@ async function main() {
   // asking it to individually justify skipping 27 routes with no recipe at
   // all (which requested_routes would silently discard downstream anyway)
   // is wasted reasoning that risks eating the response's token budget before
-  // it gets to the routes that matter. Other top-level registry context
-  // (mvp_routes, underwriting_groups_seed, etc.) is left intact.
+  // it gets to the routes that matter. mvp_routes is filtered the same way
+  // routes is, so the two stay consistent — otherwise Claude sees routes
+  // listed in mvp_routes with no matching entry in routes[] and reasonably
+  // (but misleadingly) concludes they're "unresolved in the registry" when
+  // they're really just outside this session's requested_routes. The
+  // canonical registry.json on disk is never touched — this filtering is
+  // request-scoped only.
   const allowedRoutes = new Set(profilesConfig.requested_routes || registry.mvp_routes || []);
   const filteredRegistry = {
     ...registry,
     routes: registry.routes.filter((r) => allowedRoutes.has(r.registry_id)),
+    mvp_routes: (registry.mvp_routes || []).filter((id) => allowedRoutes.has(id)),
   };
 
   console.log(`\nRequesting route plan for ${profiles.length} profile(s) from ${N8N_BASE_URL} ...`);
@@ -462,6 +477,7 @@ async function main() {
     }
 
     if (compareResp.flags && compareResp.flags.length > 0) {
+      logger.log('compare_flagged_anomaly', { profileLabel, count: compareResp.flags.length });
       console.error(`  The brain flagged something anomalous while comparing [${profileLabel}]:`);
       for (const f of compareResp.flags) console.error('   -', f.observed_at, '—', f.description);
     }
@@ -482,6 +498,7 @@ async function main() {
       route_plan: routePlan,
       worker_results: results,
       comparison: compareResp.comparison,
+      flags: compareResp.flags || [],
     });
 
     if (compareResp.comparison && compareResp.comparison.summary_text) {

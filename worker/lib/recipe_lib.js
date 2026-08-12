@@ -182,9 +182,62 @@ async function resolveVaultValue(vaultFieldPath, vaultPassphrase) {
   return value;
 }
 
+/**
+ * Automatic, centralized tracking of every selector ever filled/selected
+ * with a vault_only value on a given page — keyed by the page object so
+ * each route's own Playwright page tracks independently. This exists
+ * because relying on each recipe to remember to push into its own local
+ * maskSelectors array, and on every thrown error to carry it, is fragile:
+ * confirmed live, an unexpected failure partway through a recipe (after
+ * earlier vault_only fields were already filled and still visible) would
+ * reach worker/server.js's evidence capture with zero masking, since a
+ * plain error has no maskSelectors of its own. Tracking here instead means
+ * the evidence screenshot can always be masked correctly regardless of
+ * which fields a recipe/error explicitly remembered to report.
+ */
+const pageMaskSelectors = new WeakMap();
+
+function trackMaskSelector(page, selector) {
+  if (!pageMaskSelectors.has(page)) pageMaskSelectors.set(page, []);
+  pageMaskSelectors.get(page).push(selector);
+}
+
+/** Every selector automatically tracked as vault_only for this page so far. */
+function getTrackedMaskSelectors(page) {
+  return pageMaskSelectors.get(page) || [];
+}
+
+/**
+ * A failed Playwright action on a vault_only value must never let the
+ * caller see Playwright's own error message — a TimeoutError's message
+ * embeds a full call log that echoes back the literal value the action
+ * tried to type/select, which would leak a vault_only value into
+ * failure_reason and from there toward n8n/Claude, a planning_safe-only
+ * channel. Confirmed live: a postal code leaked this way when a Rates.ca
+ * selector matched multiple elements and the fill timed out. Re-thrown
+ * with the original error's name (retry classification and logging both
+ * key off e.name) but a message that names only the field, never the
+ * value or Playwright's raw call log.
+ */
+function sanitizedFillError(e, vaultFieldPath) {
+  const sanitized = new Error(
+    `Failed to fill vault_only field "${vaultFieldPath}" (${e.name || 'Error'}) — the value itself is never included in this error.`
+  );
+  sanitized.name = e.name || 'Error';
+  return sanitized;
+}
+
 async function fillFromVault(page, selector, vaultFieldPath, vaultPassphrase) {
   const value = await resolveVaultValue(vaultFieldPath, vaultPassphrase);
-  await page.fill(selector, String(value));
+  // Tracked before the attempt, not after — a fill that "fails" can still
+  // have partially entered characters into the page before erroring out, so
+  // the selector must be masked regardless of whether this call succeeds.
+  trackMaskSelector(page, selector);
+  try {
+    await page.fill(selector, String(value));
+  } catch (e) {
+    throw sanitizedFillError(e, vaultFieldPath);
+  }
   logger.log('field_filled', { field: vaultFieldPath, sensitivity: 'vault_only' });
 }
 
@@ -199,7 +252,12 @@ async function fillPlanning(page, selector, value) {
  */
 async function selectFromVault(page, selector, vaultFieldPath, vaultPassphrase) {
   const value = await resolveVaultValue(vaultFieldPath, vaultPassphrase);
-  await page.selectOption(selector, String(value));
+  trackMaskSelector(page, selector);
+  try {
+    await page.selectOption(selector, String(value));
+  } catch (e) {
+    throw sanitizedFillError(e, vaultFieldPath);
+  }
   logger.log('field_filled', { field: vaultFieldPath, sensitivity: 'vault_only', kind: 'select' });
 }
 
@@ -327,6 +385,7 @@ module.exports = {
   HumanTimeout,
   HumanAborted,
   captureRedactedEvidence,
+  getTrackedMaskSelectors,
   fillFromVault,
   fillPlanning,
   selectFromVault,
