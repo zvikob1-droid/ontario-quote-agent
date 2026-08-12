@@ -1,0 +1,24 @@
+# Sensitive data — never commit
+vault/store/
+vault/*.key
+vault/*.vault
+*.env
+.env
+.env.*
+
+# Evidence artifacts may contain personal data before redaction review
+worker/evidence/raw/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# Local run output
+*.log
+worker/logs/
+
+# Your working profile config (keep orchestrator/profiles.example.json tracked instead)
+orchestrator/profiles.json

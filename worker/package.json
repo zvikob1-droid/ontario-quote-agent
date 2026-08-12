@@ -1,0 +1,14 @@
+{
+  "name": "ontario-quote-agent-worker",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local-only automation worker. Never deploy this off your own machine.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "install-browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  }
+}

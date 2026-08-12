@@ -1,0 +1,31 @@
+{
+  "benchmark_coverage": {
+    "coverage_configuration.requested_effective_date": "2026-09-01",
+    "coverage_configuration.term_months": 12,
+    "coverage_configuration.third_party_liability_limit": 2000000,
+    "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+    "coverage_configuration.dcpd": "included",
+    "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+    "coverage_configuration.endorsements": ["OPCF44R"],
+    "coverage_configuration.discounts_to_request": ["winter_tires"]
+  },
+  "profiles": [
+    {
+      "label": "2026 Chevrolet Equinox",
+      "overrides": {
+        "vehicle_identity.model_year": 2026,
+        "vehicle_identity.make": "Chevrolet",
+        "vehicle_identity.model": "Equinox"
+      }
+    },
+    {
+      "label": "2025 Chevrolet Equinox",
+      "overrides": {
+        "vehicle_identity.model_year": 2025,
+        "vehicle_identity.make": "Chevrolet",
+        "vehicle_identity.model": "Equinox"
+      }
+    }
+  ],
+  "requested_routes": ["rates_ca", "sonnet", "td_insurance", "onlia", "local_independent_broker"]
+}

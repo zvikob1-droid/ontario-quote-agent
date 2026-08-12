@@ -1,0 +1,226 @@
+{
+  "$id": "ontario-quote-agent/intake_schema",
+  "description": "Canonical intake schema, superset of OAF 1 fields per the challenge brief section 5-6, with data minimization applied per route. Every field is tagged with a sensitivity level that determines which component is allowed to see it.",
+  "sensitivity_levels": {
+    "vault_only": "Lives only in the local encrypted vault. Read only by the local worker, in-process, immediately before typing it into a destination form. Never sent to n8n or Claude, never logged, never committed.",
+    "planning_safe": "Non-identifying rating/config/routing factor. Safe to pass to n8n and Claude for route planning and quote normalization. Still never logged with any vault_only field attached."
+  },
+  "groups": {
+    "consent_and_mode": {
+      "fields": [
+        { "name": "consent_timestamp", "sensitivity": "planning_safe" },
+        { "name": "mode", "sensitivity": "planning_safe", "enum": ["live_quote", "discovery_estimate_only"] },
+        { "name": "permitted_channels", "sensitivity": "planning_safe", "type": "array" },
+        { "name": "approved_insurers_or_brokers", "sensitivity": "planning_safe", "type": "array" },
+        { "name": "callback_permission", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "recording_or_transcription_choice", "sensitivity": "planning_safe", "type": "boolean" }
+      ]
+    },
+    "identity": {
+      "fields": [
+        { "name": "alias", "sensitivity": "planning_safe", "note": "discovery/estimate-only use, never mixed with a real licence number" },
+        { "name": "legal_name", "sensitivity": "vault_only" },
+        { "name": "preferred_language", "sensitivity": "planning_safe" },
+        { "name": "date_of_birth", "sensitivity": "vault_only" },
+        { "name": "gender_field_as_required_by_form", "sensitivity": "vault_only" },
+        { "name": "marital_status", "sensitivity": "planning_safe" },
+        { "name": "occupational_status", "sensitivity": "planning_safe", "note": "added after Rates.ca's real quote form asked for it (Employed/Unemployed/Student/Retired) — a rating factor, not identifying on its own" }
+      ]
+    },
+    "contact": {
+      "fields": [
+        { "name": "email", "sensitivity": "vault_only" },
+        { "name": "mobile_phone", "sensitivity": "vault_only" },
+        { "name": "home_or_work_phone", "sensitivity": "vault_only" },
+        { "name": "preferred_callback_window", "sensitivity": "planning_safe" }
+      ]
+    },
+    "primary_address": {
+      "fields": [
+        { "name": "street", "sensitivity": "vault_only" },
+        { "name": "unit", "sensitivity": "vault_only" },
+        { "name": "city", "sensitivity": "vault_only" },
+        { "name": "province", "sensitivity": "planning_safe", "const": "ON" },
+        { "name": "postal_code", "sensitivity": "vault_only" },
+        { "name": "postal_code_fsa", "sensitivity": "planning_safe", "note": "first 3 characters only, derived locally, used for rough territory-based routing" },
+        { "name": "residence_start_date", "sensitivity": "vault_only" },
+        { "name": "prior_address", "sensitivity": "vault_only" },
+        { "name": "is_normal_residence_and_garaging_location", "sensitivity": "planning_safe", "type": "boolean" }
+      ]
+    },
+    "household": {
+      "fields": [
+        { "name": "licensed_household_members", "sensitivity": "vault_only", "note": "not collected in this single-applicant build" },
+        { "name": "regular_vehicle_users", "sensitivity": "vault_only" },
+        { "name": "dependants_relevant_to_optional_benefits", "sensitivity": "vault_only" },
+        { "name": "other_household_vehicles", "sensitivity": "planning_safe", "type": "array" }
+      ]
+    },
+    "licence_identity": {
+      "fields": [
+        { "name": "name_as_shown_on_licence", "sensitivity": "vault_only" },
+        { "name": "ontario_drivers_licence_number", "sensitivity": "vault_only", "note": "own licence only, never fabricated, never another person's" },
+        { "name": "province", "sensitivity": "planning_safe", "const": "ON" },
+        { "name": "class", "sensitivity": "planning_safe" },
+        { "name": "status", "sensitivity": "planning_safe" },
+        { "name": "expiry", "sensitivity": "vault_only" }
+      ]
+    },
+    "licensing_timeline": {
+      "fields": [
+        { "name": "g1_date_or_year", "sensitivity": "planning_safe" },
+        { "name": "g2_date_or_year", "sensitivity": "planning_safe" },
+        { "name": "g_date_or_year", "sensitivity": "planning_safe" },
+        { "name": "date_first_licensed_canada_or_us", "sensitivity": "planning_safe" },
+        { "name": "first_licensed_age", "sensitivity": "planning_safe", "note": "added after Rates.ca's real quote form asked for age-at-first-licence directly, rather than a date" },
+        { "name": "other_classes", "sensitivity": "planning_safe" },
+        { "name": "out_of_country_experience_recognized", "sensitivity": "planning_safe" },
+        { "name": "proof_availability", "sensitivity": "planning_safe", "type": "boolean" }
+      ]
+    },
+    "training": {
+      "fields": [
+        { "name": "approved_driver_training_completed", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "certificate_availability", "sensitivity": "planning_safe", "type": "boolean" }
+      ]
+    },
+    "assignment": {
+      "fields": [
+        { "name": "role", "sensitivity": "planning_safe", "enum": ["principal", "secondary", "occasional"] },
+        { "name": "percentage_use_by_vehicle", "sensitivity": "planning_safe" },
+        { "name": "other_regular_access", "sensitivity": "planning_safe", "type": "boolean" }
+      ]
+    },
+    "discount_eligibility": {
+      "fields": [
+        { "name": "retiree_criteria_met", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "student_status", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "good_driver_or_group_discounts", "sensitivity": "planning_safe", "type": "array" },
+        { "name": "telematics_opt_in", "sensitivity": "planning_safe", "type": "boolean", "note": "keep telematics quotes separate unless explicitly opted in" }
+      ]
+    },
+    "other_drivers": {
+      "fields": [
+        { "name": "other_licensed_persons", "sensitivity": "vault_only", "note": "not collected in this single-applicant build; would require each person's own consent" }
+      ]
+    },
+    "vehicle_identity": {
+      "fields": [
+        { "name": "vin", "sensitivity": "vault_only" },
+        { "name": "model_year", "sensitivity": "planning_safe" },
+        { "name": "make", "sensitivity": "planning_safe" },
+        { "name": "model", "sensitivity": "planning_safe" },
+        { "name": "trim_or_body_type", "sensitivity": "planning_safe" },
+        { "name": "engine_or_fuel_type", "sensitivity": "planning_safe" },
+        { "name": "cylinders_or_engine_size", "sensitivity": "planning_safe" },
+        { "name": "gvwr", "sensitivity": "planning_safe" }
+      ]
+    },
+    "ownership": {
+      "fields": [
+        { "name": "owned_or_leased", "sensitivity": "planning_safe" },
+        { "name": "new_or_used", "sensitivity": "planning_safe" },
+        { "name": "purchase_or_lease_month_year", "sensitivity": "planning_safe" },
+        { "name": "purchase_price", "sensitivity": "planning_safe" },
+        { "name": "registered_owner", "sensitivity": "vault_only" },
+        { "name": "actual_owner", "sensitivity": "vault_only" },
+        { "name": "lienholder_or_lessor_details", "sensitivity": "vault_only" }
+      ]
+    },
+    "use": {
+      "fields": [
+        { "name": "use_type", "sensitivity": "planning_safe", "enum": ["pleasure", "commute", "school", "business", "farm", "commercial"] },
+        { "name": "one_way_commute_distance", "sensitivity": "planning_safe" },
+        { "name": "annual_kilometres", "sensitivity": "planning_safe" },
+        { "name": "business_use_percentage", "sensitivity": "planning_safe" },
+        { "name": "days_commuting", "sensitivity": "planning_safe" },
+        { "name": "carpool_and_passenger_count", "sensitivity": "planning_safe" }
+      ]
+    },
+    "risk_details": {
+      "fields": [
+        { "name": "garaging_address", "sensitivity": "vault_only" },
+        { "name": "unrepaired_damage", "sensitivity": "planning_safe" },
+        { "name": "modifications_or_customization", "sensitivity": "planning_safe" },
+        { "name": "non_factory_equipment", "sensitivity": "planning_safe" },
+        { "name": "winter_tires", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "approved_theft_recovery_device", "sensitivity": "planning_safe" },
+        { "name": "anti_theft_features", "sensitivity": "planning_safe" },
+        { "name": "overnight_parking_location", "sensitivity": "planning_safe", "note": "added after Rates.ca's real quote form asked for it — a general category (garage/driveway/lot/etc.), not the garaging_address itself" }
+      ]
+    },
+    "special_use": {
+      "fields": [
+        { "name": "rideshare_or_delivery", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "carshare", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "rental_to_others", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "passengers_for_compensation", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "trailer_use", "sensitivity": "planning_safe", "type": "boolean" },
+        { "name": "hazardous_materials", "sensitivity": "planning_safe", "type": "boolean" }
+      ]
+    },
+    "household_fleet": {
+      "fields": [
+        { "name": "total_household_or_business_vehicles", "sensitivity": "planning_safe" },
+        { "name": "driver_to_vehicle_allocation", "sensitivity": "planning_safe" }
+      ]
+    },
+    "current_insurance": {
+      "fields": [
+        { "name": "insurer", "sensitivity": "planning_safe" },
+        { "name": "policy_number", "sensitivity": "vault_only" },
+        { "name": "expiry_date", "sensitivity": "vault_only" },
+        { "name": "current_premium", "sensitivity": "planning_safe", "note": "only if volunteered" },
+        { "name": "years_continuously_insured", "sensitivity": "planning_safe" },
+        { "name": "reason_for_shopping", "sensitivity": "planning_safe" },
+        { "name": "first_insured_year", "sensitivity": "planning_safe", "note": "added after Rates.ca's real quote form asked for it — the year first ever insured (any insurer), distinct from years_continuously_insured with the current one" }
+      ]
+    },
+    "licence_and_permit_events": {
+      "fields": [
+        { "name": "suspension_or_cancellation_events_6yr", "sensitivity": "vault_only" }
+      ]
+    },
+    "insurance_cancellations": {
+      "fields": [
+        { "name": "events", "sensitivity": "vault_only", "note": "insurer, cancellation date, reason — store every known event with its real date, not truncated to any one lookback window. Different sites ask different windows (3 years per the OAF 1 baseline, but Onlia asks 5) — each recipe filters this to whatever window that specific site actually asks for, via lib.filterEventsWithinYears(), rather than the vault deciding a window up front." }
+      ]
+    },
+    "misrepresentation": {
+      "fields": [
+        { "name": "misrepresentation_events_3yr", "sensitivity": "vault_only" }
+      ]
+    },
+    "fraud_finding": {
+      "fields": [
+        { "name": "fraud_court_findings", "sensitivity": "vault_only" }
+      ]
+    },
+    "accidents_and_claims": {
+      "fields": [
+        { "name": "events", "sensitivity": "vault_only", "note": "driver, vehicle, year, month, fault %, coverage, amount, details — store every known event with its real date, not truncated to any one lookback window. Different sites ask different windows (6 years per the OAF 1 baseline, but TD Insurance asks 10) — each recipe filters this to whatever window that specific site actually asks for, via lib.filterEventsWithinYears(), rather than the vault deciding a window up front." }
+      ]
+    },
+    "convictions": {
+      "fields": [
+        { "name": "events_3yr", "sensitivity": "vault_only", "note": "driver, conviction date, description" }
+      ]
+    },
+    "coverage_configuration": {
+      "note": "My chosen benchmark configuration, not identifying data. Needed by the brain for normalization and comparison.",
+      "fields": [
+        { "name": "requested_effective_date", "sensitivity": "planning_safe" },
+        { "name": "term_months", "sensitivity": "planning_safe" },
+        { "name": "third_party_liability_limit", "sensitivity": "planning_safe" },
+        { "name": "accident_benefits_selection", "sensitivity": "planning_safe" },
+        { "name": "optional_benefits_selection", "sensitivity": "planning_safe" },
+        { "name": "uninsured_automobile", "sensitivity": "planning_safe" },
+        { "name": "dcpd", "sensitivity": "planning_safe" },
+        { "name": "own_damage_coverage", "sensitivity": "planning_safe" },
+        { "name": "endorsements", "sensitivity": "planning_safe" },
+        { "name": "discounts_to_request", "sensitivity": "planning_safe" },
+        { "name": "payment_frequency_preference", "sensitivity": "planning_safe", "note": "preference only; no payment/card data is ever collected or submitted" }
+      ]
+    }
+  }
+}

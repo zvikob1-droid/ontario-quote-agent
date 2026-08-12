@@ -1,0 +1,688 @@
+{
+  "generated_from": "docs/../Ontario All Quote Agent Hackathon Brief - August 8 Update.pdf, Appendix A/B",
+  "seed_date": "2026-08-06",
+  "build_start_date": "2026-08-10",
+  "mvp_routes": [
+    "local_independent_broker",
+    "onlia",
+    "rates_ca",
+    "sonnet",
+    "td_insurance"
+  ],
+  "routes": [
+    {
+      "registry_id": "allstate",
+      "brand_or_program": "Allstate",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Allstate Insurance Company of Canada; Pafco; Pembridge (validate Esurance)",
+      "quote_url": "https://www.allstate.ca/quote",
+      "public_phone_route": "Allstate public sales line",
+      "licensed_intermediary": null,
+      "requirements": "human",
+      "automation_notes": "Online quote plus agent path per brief [3][14].",
+      "status": "unresolved",
+      "distinct_rate_source_id": "allstate",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "aviva_direct",
+      "brand_or_program": "Aviva Direct",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Aviva General Insurance Company; Aviva Insurance Company of Canada",
+      "quote_url": "https://www.avivacanada.com/direct/",
+      "public_phone_route": "Aviva Direct public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Direct online quoting; validate legacy entities (S&Y, Scottish & York, Traders) [14].",
+      "status": "unresolved",
+      "distinct_rate_source_id": "aviva_direct",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "belairdirect",
+      "brand_or_program": "belairdirect",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Belair Insurance Company Inc. (Intact group)",
+      "quote_url": "https://www.belairdirect.com/en/auto-insurance/quote.html",
+      "public_phone_route": "belairdirect public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Direct writer under Intact group [3].",
+      "status": "unresolved",
+      "distinct_rate_source_id": "belairdirect",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "caa_insurance",
+      "brand_or_program": "CAA Insurance",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "CAA Insurance Company",
+      "quote_url": "https://www.caasco.com/insurance/auto",
+      "public_phone_route": "CAA public sales line",
+      "licensed_intermediary": null,
+      "requirements": "membership",
+      "automation_notes": "CAA direct/broker route; Echelon (non-standard) is a separate CAA-group entity [7].",
+      "status": "unresolved",
+      "distinct_rate_source_id": "caa_insurance",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "cooperators",
+      "brand_or_program": "Co-operators",
+      "distribution_type": "agent",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Co-operators General Insurance Company (validate COSECO/CUMIS/Sovereign affinity+specialty scope)",
+      "quote_url": "https://www.cooperators.ca/en/personal-insurance/auto-insurance.aspx",
+      "public_phone_route": "Co-operators local agent line",
+      "licensed_intermediary": "Local Co-operators agent",
+      "requirements": "human",
+      "automation_notes": "Web/agent route.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "cooperators",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "desjardins",
+      "brand_or_program": "Desjardins Insurance",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Certas Direct Insurance Company; Certas Home and Auto Insurance Company",
+      "quote_url": "https://www.desjardinsinsurance.com/en/auto-insurance",
+      "public_phone_route": "Desjardins public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Web/agent route; The Personal is a separate affinity brand under this group.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "desjardins",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "rbc_insurance",
+      "brand_or_program": "RBC Insurance",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "RBC Insurance (Aviva-underwritten program per brief [15])",
+      "quote_url": "https://www.rbcinsurance.com/auto-insurance/",
+      "public_phone_route": "RBC Insurance public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Validate against Aviva Direct for duplicate_rate_source.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "rbc_insurance",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "sonnet",
+      "brand_or_program": "Sonnet Insurance",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Sonnet Insurance Company (Definity group)",
+      "quote_url": "https://www.sonnet.ca/get-a-quote",
+      "public_phone_route": "Sonnet public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Fully online direct quote flow [17]. MVP ROUTE.",
+      "status": "active_mvp",
+      "distinct_rate_source_id": "sonnet",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": "2026-08-10"
+    },
+    {
+      "registry_id": "square_one",
+      "brand_or_program": "Square One",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Zurich Insurance Company (per brief [8])",
+      "quote_url": "https://www.squareone.ca/car-insurance",
+      "public_phone_route": "Square One public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Direct for Ontario car per brief note under Zurich group.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "square_one",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "td_insurance",
+      "brand_or_program": "TD Insurance",
+      "distribution_type": "direct",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "TD General Insurance Company; Primmum; Security National",
+      "quote_url": "https://www.tdinsurance.com/products-services/auto-insurance",
+      "public_phone_route": "TD Insurance public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Online, phone and affinity routes [16]. MVP ROUTE.",
+      "status": "active_mvp",
+      "distinct_rate_source_id": "td_insurance",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": "2026-08-10"
+    },
+    {
+      "registry_id": "the_personal",
+      "brand_or_program": "The Personal",
+      "distribution_type": "affinity",
+      "product_scope": "affinity",
+      "known_panel_source": "The Personal Insurance Company (Desjardins group)",
+      "quote_url": "https://www.thepersonal.com/en/auto-insurance",
+      "public_phone_route": "The Personal public sales line",
+      "licensed_intermediary": null,
+      "requirements": "membership",
+      "automation_notes": "Group/affinity quote route [18].",
+      "status": "unresolved",
+      "distinct_rate_source_id": "the_personal",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "rates_ca",
+      "brand_or_program": "Rates.ca",
+      "distribution_type": "aggregator",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Broad panel, insurer API + industry-rater connectivity per brief [9]",
+      "quote_url": "https://rates.ca/auto-insurance",
+      "public_phone_route": null,
+      "licensed_intermediary": "Rates.ca",
+      "requirements": "",
+      "automation_notes": "Broad online comparison. MVP ROUTE.",
+      "status": "active_mvp",
+      "distinct_rate_source_id": "rates_ca",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": "2026-08-10"
+    },
+    {
+      "registry_id": "lowestrates_ca",
+      "brand_or_program": "LowestRates.ca",
+      "distribution_type": "aggregator",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "CAA, Coachman, Economical, Gore, Pafco, Pembridge, SGI, Travelers, Zenith per brief [10]",
+      "quote_url": "https://www.lowestrates.ca/auto-insurance",
+      "public_phone_route": null,
+      "licensed_intermediary": "LowestRates.ca",
+      "requirements": "",
+      "automation_notes": "CONFIRMED duplicate of rates_ca, not just a suspected overlap \u2014 verified by manually running the identical applicant/coverage on both sites and getting identical results back, same backend with different branding on top. Not planned or attempted as its own route; rates_ca already covers this rate source.",
+      "status": "duplicate_rate_source",
+      "distinct_rate_source_id": "rates_ca",
+      "source_citation": "Manual side-by-side test by the applicant (identical results on both sites), 2026-08-10",
+      "last_verified_at": "2026-08-10"
+    },
+    {
+      "registry_id": "surex",
+      "brand_or_program": "Surex",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Aviva, Intact, Jevco, Wawanesa, CAA, Coachman, Definity/Economical, Gore, Pafco, Pembridge, SGI, Travelers per brief [11]",
+      "quote_url": "https://surex.com/auto-insurance",
+      "public_phone_route": "Surex public callback route",
+      "licensed_intermediary": "Surex",
+      "requirements": "callback",
+      "automation_notes": "Published carrier/MGA compensation disclosure.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "surex",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "thinkinsure",
+      "brand_or_program": "ThinkInsure",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Full RIBO-licensed carrier list \u2014 request explicitly",
+      "quote_url": "https://thinkinsure.ca/auto-insurance/",
+      "public_phone_route": "ThinkInsure public sales line",
+      "licensed_intermediary": "ThinkInsure",
+      "requirements": "human",
+      "automation_notes": "Traditional independent broker \u2014 web intake plus advisor completion. Same human-mediated nature as local_independent_broker below.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "thinkinsure",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "onlia",
+      "brand_or_program": "Onlia",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Multiple carriers \u2014 capture actual returned insurer, not brokerage brand",
+      "quote_url": "https://app.onlia.ca/#/auto/personal-info?Affinity_Group=Onlia",
+      "public_phone_route": null,
+      "licensed_intermediary": "Onlia",
+      "requirements": "",
+      "automation_notes": "MVP ROUTE. Digital brokerage \u2014 self-generates a quote online, unlike a traditional independent broker. Real quoting-engine deep link confirmed (app.onlia.ca, separate from the marketing site). All 5 steps are now mapped: step 1 (Personal Info) from my own live DOM verification, steps 2-5 (Vehicle, Driver(s), main driver + contact, Get my quote) from my own real walkthrough of the full flow. Selectors past step 1 are best-effort from screenshots, not confirmed DOM ids \u2014 not yet run against the live site with real vault data. See worker/recipes/onlia.js.",
+      "status": "active_mvp",
+      "distinct_rate_source_id": "onlia",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": "2026-08-10"
+    },
+    {
+      "registry_id": "scoop",
+      "brand_or_program": "Scoop",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Confirm full panel on live attempt",
+      "quote_url": "https://insurancescoop.com/",
+      "public_phone_route": "Scoop callback route",
+      "licensed_intermediary": "Scoop",
+      "requirements": "callback",
+      "automation_notes": "Digital brokerage and callback workflow.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "scoop",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "pc_insurance",
+      "brand_or_program": "PC Insurance",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Capture returned underwriter and eligibility discount",
+      "quote_url": "https://www.pcinsurance.ca/auto-insurance",
+      "public_phone_route": null,
+      "licensed_intermediary": "PC Insurance",
+      "requirements": "",
+      "automation_notes": "Branded digital brokerage.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "pc_insurance",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "inova",
+      "brand_or_program": "Inova",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Verify membership requirement and actual panel",
+      "quote_url": "https://www.inova.ca/",
+      "public_phone_route": null,
+      "licensed_intermediary": "Inova",
+      "requirements": "membership",
+      "automation_notes": "Membership-based brokerage route.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "inova",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "insurancehotline",
+      "brand_or_program": "InsuranceHotline",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Lead/broker-network route, not itself the underwriter",
+      "quote_url": "https://www.insurancehotline.com/",
+      "public_phone_route": null,
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Lead-generation route; verify which broker ultimately handles it.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "insurancehotline",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "local_independent_broker",
+      "brand_or_program": "Staebler Insurance",
+      "distribution_type": "broker",
+      "product_scope": "standard_PPA",
+      "known_panel_source": "Full carrier list disclosed on request",
+      "quote_url": "https://www.staebler.com/get-a-quote/",
+      "public_phone_route": "Toll free 1-800-321-9187",
+      "licensed_intermediary": "Staebler Insurance",
+      "requirements": "human",
+      "automation_notes": "MVP ROUTE, structurally different from the other MVP routes: a traditional independent broker doesn't return an instant automated quote \u2014 it hands over its carrier list and quote results on request, a human-mediated exchange. Confirmed directly by Staebler's own site, which describes this explicitly as a 3-step process (submit form -> get paired with a broker who calls -> broker compares and presents options). Recipe fills the lead form (name/email/phone/message) then stops at a human checkpoint before the final Submit click \u2014 see worker/recipes/local_independent_broker.js. Correct terminal status is manual_handoff/callback_required, never a fabricated firm quote.",
+      "status": "active_mvp",
+      "distinct_rate_source_id": "local_independent_broker",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": "2026-08-10"
+    },
+    {
+      "registry_id": "hagerty",
+      "brand_or_program": "Hagerty (collector)",
+      "distribution_type": "MGA_program",
+      "product_scope": "collector",
+      "known_panel_source": "Administered separately, underwritten by Aviva per brief [13]",
+      "quote_url": "https://www.hagerty.ca/insurance",
+      "public_phone_route": "Hagerty public sales line",
+      "licensed_intermediary": null,
+      "requirements": "",
+      "automation_notes": "Only applicable if vehicle/household meet program rules \u2014 not a daily-driver substitute.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "hagerty",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "agile",
+      "brand_or_program": "Agile Underwriting",
+      "distribution_type": "MGA_program",
+      "product_scope": "unknown",
+      "known_panel_source": "Discovery lead from broker disclosures per brief [11][13]",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Count only after verifying it accepts an individual Ontario PPA risk relevant to my profile.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "agile",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "april_canada",
+      "brand_or_program": "APRIL Canada",
+      "distribution_type": "MGA_program",
+      "product_scope": "unknown",
+      "known_panel_source": "Discovery lead from broker disclosures",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Verify PPA relevance before counting.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "april_canada",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "burns_wilcox",
+      "brand_or_program": "Burns & Wilcox",
+      "distribution_type": "MGA_program",
+      "product_scope": "unknown",
+      "known_panel_source": "Discovery lead from broker disclosures",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Verify PPA relevance before counting.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "burns_wilcox",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "cambrian_special_risks",
+      "brand_or_program": "Cambrian Special Risks",
+      "distribution_type": "MGA_program",
+      "product_scope": "unknown",
+      "known_panel_source": "Discovery lead from broker disclosures",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Verify PPA relevance before counting.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "cambrian_special_risks",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "milnco",
+      "brand_or_program": "Milnco",
+      "distribution_type": "MGA_program",
+      "product_scope": "unknown",
+      "known_panel_source": "Discovery lead from broker disclosures",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Verify PPA relevance before counting.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "milnco",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "special_risk",
+      "brand_or_program": "Special Risk",
+      "distribution_type": "MGA_program",
+      "product_scope": "unknown",
+      "known_panel_source": "Discovery lead from broker disclosures",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Verify PPA relevance before counting.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "special_risk",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "nonstandard_echelon_jevco_pafco_coachman",
+      "brand_or_program": "Non-standard auto (Echelon/Jevco/Pafco/Coachman)",
+      "distribution_type": "MGA_program",
+      "product_scope": "nonstandard_PPA",
+      "known_panel_source": "Test through licensed broker routes when profile fits",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via broker",
+      "requirements": "human",
+      "automation_notes": "Only relevant if standard-market routes decline or rate poorly.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "nonstandard_echelon_jevco_pafco_coachman",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "hnw_chubb_pure",
+      "brand_or_program": "High-net-worth (Chubb/PURE)",
+      "distribution_type": "MGA_program",
+      "product_scope": "high_net_worth",
+      "known_panel_source": "Verify through an appointed broker",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via appointed broker",
+      "requirements": "human",
+      "automation_notes": "Do not count a market I cannot access.",
+      "status": "unresolved",
+      "distinct_rate_source_id": "hnw_chubb_pure",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "facility_association",
+      "brand_or_program": "Facility Association (residual)",
+      "distribution_type": "residual",
+      "product_scope": "unknown",
+      "known_panel_source": "Fallback for otherwise hard-to-place risks",
+      "quote_url": null,
+      "public_phone_route": null,
+      "licensed_intermediary": "Via licensed intermediary",
+      "requirements": "human",
+      "automation_notes": "Residual market, accessed only through a licensed intermediary for otherwise hard-to-place risks. As the applicant, I already know I qualify for the standard market, so there's no personal need to pursue this route for this build.",
+      "status": "out_of_scope",
+      "distinct_rate_source_id": "facility_association",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    },
+    {
+      "registry_id": "ontario_mutuals",
+      "brand_or_program": "Ontario Mutuals (locator)",
+      "distribution_type": "mutual",
+      "product_scope": "unknown",
+      "known_panel_source": "Commonwell, Gore, Heartland, Peel, Portage, Wawanesa and others per Appendix A",
+      "quote_url": "https://www.ontariomutuals.ca/",
+      "public_phone_route": null,
+      "licensed_intermediary": "Specific mutual via locator",
+      "requirements": "human",
+      "automation_notes": "Mutual carriers, reached via the Ontario Mutuals locator and validated per-mutual. Same reasoning as Facility Association: I qualify for the standard market, so this isn't relevant to my own shopping needs right now.",
+      "status": "out_of_scope",
+      "distinct_rate_source_id": "ontario_mutuals",
+      "source_citation": "Ontario All-Quote Agent Challenge participant brief, checked 2026-08-06",
+      "last_verified_at": null
+    }
+  ],
+  "underwriting_groups_seed": [
+    {
+      "insurer_group": "AIG",
+      "legal_entities": "AIG Insurance Company of Canada",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "Allstate",
+      "legal_entities": "Allstate Insurance Company of Canada; Esurance Insurance Company of Canada; Pafco Insurance Company; Pembridge Insurance Company",
+      "validation_note": "Allstate direct/agent; Pafco and Pembridge broker; validate Esurance"
+    },
+    {
+      "insurer_group": "Aviva",
+      "legal_entities": "Aviva General Insurance Company; Aviva Insurance Company of Canada; S&Y Insurance Company; Scottish & York Insurance Co. Limited; Traders General Insurance Company",
+      "validation_note": "Direct, RBC, broker and program routes; dedupe and validate legacy entities"
+    },
+    {
+      "insurer_group": "Beneva",
+      "legal_entities": "Unica Insurance Inc.",
+      "validation_note": "Broker route"
+    },
+    {
+      "insurer_group": "CAA",
+      "legal_entities": "CAA Insurance Company; Echelon Insurance",
+      "validation_note": "CAA direct/broker; Echelon broker and non-standard"
+    },
+    {
+      "insurer_group": "Chubb",
+      "legal_entities": "Chubb Insurance Company of Canada",
+      "validation_note": "High-net-worth or specialty broker"
+    },
+    {
+      "insurer_group": "Co-op",
+      "legal_entities": "COSECO Insurance Company; CUMIS General Insurance Company; Co-operators General Insurance Company; The Sovereign General Insurance Company",
+      "validation_note": "Co-operators web/agent; affinity and specialty entities need validation"
+    },
+    {
+      "insurer_group": "Commonwell",
+      "legal_entities": "The Commonwell Mutual Insurance Group",
+      "validation_note": "Mutual and broker/agent route"
+    },
+    {
+      "insurer_group": "Continental",
+      "legal_entities": "Continental Casualty Company",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "Definity",
+      "legal_entities": "Definity Insurance Company; Sonnet Insurance Company",
+      "validation_note": "Definity/Economical broker; Sonnet direct"
+    },
+    {
+      "insurer_group": "Desjardins",
+      "legal_entities": "Certas Direct Insurance Company; Certas Home and Auto Insurance Company; The Personal Insurance Company",
+      "validation_note": "Desjardins web/agent; The Personal affinity"
+    },
+    {
+      "insurer_group": "Economical",
+      "legal_entities": "Economical Mutual Insurance Company",
+      "validation_note": "Broker route; map current legal entity/program"
+    },
+    {
+      "insurer_group": "FA",
+      "legal_entities": "Facility Association",
+      "validation_note": "Residual-market route through licensed intermediary"
+    },
+    {
+      "insurer_group": "FMRe",
+      "legal_entities": "Farm Mutual Reinsurance Plan Inc. (on behalf of Ontario Mutuals)",
+      "validation_note": "Ontario Mutuals locator and specific mutual validation"
+    },
+    {
+      "insurer_group": "Gore",
+      "legal_entities": "Gore Mutual Insurance Company",
+      "validation_note": "Broker route"
+    },
+    {
+      "insurer_group": "Hartford",
+      "legal_entities": "Hartford Fire Insurance Company",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "Heartland",
+      "legal_entities": "Heartland Farm Mutual Inc.",
+      "validation_note": "Mutual/local agent or broker"
+    },
+    {
+      "insurer_group": "Intact",
+      "legal_entities": "Belair Insurance Company Inc.; The Guarantee Company of North America; Intact Insurance Company; Jevco Insurance Company; Novex Insurance Company; Royal & SunAlliance Insurance Company of Canada; Unifund Assurance Company; Western Assurance Company",
+      "validation_note": "belairdirect direct; Intact and Jevco broker; validate legacy/affinity entities"
+    },
+    {
+      "insurer_group": "Liberty",
+      "legal_entities": "Liberty Mutual Insurance Company",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "Northbridge",
+      "legal_entities": "Federated Insurance Company of Canada; Northbridge General Insurance Corporation; Verassure Insurance Company; Zenith Insurance Company",
+      "validation_note": "Northbridge and Zenith broker; validate Federated/Verassure scope"
+    },
+    {
+      "insurer_group": "Optimum",
+      "legal_entities": "Optimum Insurance Company Inc.",
+      "validation_note": "Broker route"
+    },
+    {
+      "insurer_group": "PURE",
+      "legal_entities": "PURE Insurance",
+      "validation_note": "High-net-worth broker"
+    },
+    {
+      "insurer_group": "Peel",
+      "legal_entities": "Peel Mutual Insurance Company",
+      "validation_note": "Mutual/local agent or broker"
+    },
+    {
+      "insurer_group": "Portage",
+      "legal_entities": "The Portage la Prairie Mutual Insurance Company",
+      "validation_note": "Broker route"
+    },
+    {
+      "insurer_group": "SGI",
+      "legal_entities": "Coachman Insurance Company; SGI CANADA Insurance Services Ltd.",
+      "validation_note": "Broker route; Coachman non-standard"
+    },
+    {
+      "insurer_group": "Sompo",
+      "legal_entities": "Endurance Specialty Insurance Ltd.; Sompo Japan Insurance Inc.",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "TD",
+      "legal_entities": "Primmum Insurance Company; Security National Insurance Company; TD General Insurance Company",
+      "validation_note": "TD online, phone and affinity routes"
+    },
+    {
+      "insurer_group": "Tokio",
+      "legal_entities": "Tokio Marine and Nichido Fire Insurance Company Limited",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "Travelers",
+      "legal_entities": "The Dominion of Canada General Insurance Company",
+      "validation_note": "Broker route"
+    },
+    {
+      "insurer_group": "Wawanesa",
+      "legal_entities": "The Wawanesa Mutual Insurance Company",
+      "validation_note": "Broker route"
+    },
+    {
+      "insurer_group": "XL",
+      "legal_entities": "XL Specialty Insurance Company",
+      "validation_note": "Specialty/commercial broker; validate PPA relevance"
+    },
+    {
+      "insurer_group": "Zurich",
+      "legal_entities": "Zurich Insurance Company",
+      "validation_note": "Square One direct for Ontario car; specialty broker routes may differ"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "run_id": "run_1786544527284_it7xt7",
+  "generated_at": "2026-08-12T14:22:46.223Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic 4dr (My vehicle)",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic 4dr (My vehicle)"
+      },
+      "worker_results": [],
+      "comparison": {
+        "profile_label": "2025 Honda Civic 4dr (My vehicle)",
+        "results": [],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 0,
+          "duplicate_suppression": 0,
+          "freshness": 0
+        },
+        "summary_text": "No results came back for this run — the results array was empty, so there's nothing to compare against your benchmark coverage (2M liability, standard accident benefits, $500 deductible collision/comp, OPCF44R, winter tire discount requested). This isn't a \"no offers\" finding from any insurer — it means the worker didn't return any route attempts at all for this profile yet, whether because none were run, they're still in flight, or something failed upstream before producing a redacted result. Once actual route results come in (even partial or failed ones), re-run the comparison. Nothing here should be read as market coverage of 0% availability — it's 0% attempted-or-reported.",
+        "gaps": [
+          "No quote results were provided for this run — comparison could not evaluate any route.",
+          "Cannot determine from this input alone whether routes were never attempted, are still pending, or failed silently before producing a result object.",
+          "Market completion, comparable yield, evidence rate, and freshness are all reported as 0 by necessity, not as a finding about insurer availability.",
+          "Re-submission with actual result objects (including failed/unresolved ones) is needed before any real comparison or summary of offers can be given."
+        ]
+      }
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 16202,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 4096,
+          "output_tokens_details": {
+            "thinking_tokens": 3060
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic 4dr (My vehicle)",
+        "usage": {
+          "input_tokens": 3501,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 653,
+          "output_tokens_details": {
+            "thinking_tokens": 63
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 24452
+  }
+}

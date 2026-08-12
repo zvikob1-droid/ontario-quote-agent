@@ -1,0 +1,304 @@
+{
+  "name": "Ontario Quote Agent — Brain",
+  "nodes": [
+    {
+      "id": "plan-trigger",
+      "name": "Plan Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        -200
+      ],
+      "parameters": {
+        "path": "oqa-plan",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "oqa-plan"
+    },
+    {
+      "id": "build-plan-request",
+      "name": "Build Claude Request (Plan)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -200
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Input body is sent by the local orchestrator script (see orchestrator/run_session.js),\n// which reads brain/system_prompt.md, brain/tools_schema.json and\n// registry/market_registry.json off disk so this workflow never needs\n// filesystem access on the n8n host. Nothing in this body is sensitive —\n// see schema/intake_schema.json's planning_safe tag.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.profiles || !Array.isArray(body.profiles) || body.profiles.length === 0) {\n  throw new Error('Request body is missing a non-empty \"profiles\" array.');\n}\nif (!body.system_prompt || !body.registry) {\n  throw new Error('Request body is missing \"system_prompt\" or \"registry\".');\n}\n\nconst runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n\nconst allTools = body.tools || [];\nconst planTools = allTools.filter((t) => ['submit_route_plan', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n  task: 'plan_routes',\n  registry: body.registry,\n  profiles: body.profiles,\n}, null, 2);\n\nreturn [{\n  json: {\n    run_id: runId,\n    profiles: body.profiles,\n    claude_request: {\n      model: body.model || 'claude-sonnet-5',\n      max_tokens: 8192,\n      system: body.system_prompt,\n      tools: planTools,\n      tool_choice: { type: 'auto' },\n      messages: [\n        { role: 'user', content: userContent },\n      ],\n    },\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "claude-plan",
+      "name": "Claude — Plan Routes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        -200
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claude_request) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER_SET_IN_N8N",
+          "name": "Anthropic API Key (x-api-key)"
+        }
+      },
+      "notes": "continueOnFail so a Claude API failure doesn't kill the whole workflow with no response ever sent back — retrying is left entirely to the orchestrator (orchestrator/run_session.js), which classifies retryable vs non-retryable errors; n8n's own blind retry-on-fail is intentionally not used here — see Parse Route Plan for how the error is turned into a clean {error: ...} reply instead of a raw n8n 500."
+    },
+    {
+      "id": "parse-plan",
+      "name": "Parse Route Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -200
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "function extractApiError(resp) {\n  // n8n's continueOnFail error shape isn't fully consistent across versions,\n  // so try a few plausible spots rather than assuming one. Goal: get enough\n  // (an HTTP-ish status and/or Anthropic's own error.type) for the caller to\n  // tell 'worth retrying' (rate limit, overloaded, 5xx) apart from 'will never\n  // work' (bad API key, malformed request) rather than treating every failure\n  // the same.\n  let status = resp.statusCode || resp.httpCode\n    || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n  let apiErrorType = null;\n  let message = null;\n  const rawError = resp.error;\n  if (typeof rawError === 'string') {\n    message = rawError;\n  } else if (rawError && typeof rawError === 'object') {\n    message = rawError.message || rawError.description || JSON.stringify(rawError);\n    if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n  }\n  if (resp.type === 'error' && resp.error && resp.error.type) {\n    apiErrorType = resp.error.type;\n    message = resp.error.message || message;\n  }\n  return { message: message || 'Unknown error', status, apiErrorType };\n}\n\n// Pull run_id/profiles from the sibling branch's output via the input item\n// that carries it (n8n keeps items aligned by index through this linear chain).\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Plan)').first().json;\n\n// continueOnFail (set on the Claude — Plan Routes node) puts an error here\n// instead of throwing and killing the workflow. Anthropic API errors can also\n// come back as a 200 with {type: 'error', ...} in some failure modes — check\n// both, and surface enough (error_status/error_type) for the orchestrator to\n// classify retryable vs non-retryable rather than guessing from a string.\nif (claudeResponse.error || claudeResponse.type === 'error') {\n  const info = extractApiError(claudeResponse);\n  return [{ json: { run_id: upstream.run_id, route_plans: [], flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst routePlans = toolUseBlocks\n  .filter((b) => b.name === 'submit_route_plan')\n  .map((b) => b.input);\nconst flags = toolUseBlocks\n  .filter((b) => b.name === 'flag_new_field')\n  .map((b) => b.input);\n\nif (routePlans.length === 0 && flags.length === 0) {\n  // Claude responded but didn't call either expected tool — plausibly just\n  // model variance on this attempt, worth one more try. error_type is our\n  // own marker, not an Anthropic one; the orchestrator treats it as retryable.\n  return [{ json: { run_id: upstream.run_id, route_plans: [], flags: [], error: `Claude did not call submit_route_plan or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\nreturn [{\n  json: {\n    run_id: upstream.run_id,\n    route_plans: routePlans,\n    flags,\n    raw_stop_reason: claudeResponse.stop_reason,\n    usage: claudeResponse.usage || null,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "respond-plan",
+      "name": "Return Plan",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        -200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      }
+    },
+    {
+      "id": "compare-trigger",
+      "name": "Compare Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        200
+      ],
+      "parameters": {
+        "path": "oqa-compare",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "oqa-compare"
+    },
+    {
+      "id": "build-compare-request",
+      "name": "Build Claude Request (Compare)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        200
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Body sent by orchestrator/run_session.js after it collected redacted\n// results from the local worker (worker/server.js) for every planned route.\n// `results` here are already redacted per schema/quote_result_schema.json —\n// no sensitive field has ever entered this pipeline.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.run_id || !body.profile_label || !body.results) {\n  throw new Error('Request body is missing \"run_id\", \"profile_label\", or \"results\".');\n}\n\nconst allTools = body.tools || [];\nconst compareTools = allTools.filter((t) => ['submit_comparison', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n  task: 'normalize_and_compare',\n  run_id: body.run_id,\n  profile_label: body.profile_label,\n  benchmark_coverage: body.benchmark_coverage,\n  results: body.results,\n}, null, 2);\n\nreturn [{\n  json: {\n    run_id: body.run_id,\n    claude_request: {\n      model: body.model || 'claude-sonnet-5',\n      max_tokens: 8192,\n      system: body.system_prompt,\n      tools: compareTools,\n      tool_choice: { type: 'auto' },\n      messages: [\n        { role: 'user', content: userContent },\n      ],\n    },\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "claude-compare",
+      "name": "Claude — Compare",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        200
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claude_request) }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER_SET_IN_N8N",
+          "name": "Anthropic API Key (x-api-key)"
+        }
+      },
+      "notes": "continueOnFail so a Claude API failure doesn't kill the whole workflow with no response ever sent back — retrying is left entirely to the orchestrator (orchestrator/run_session.js), which classifies retryable vs non-retryable errors; n8n's own blind retry-on-fail is intentionally not used here — see Parse Comparison for how the error is turned into a clean {error: ...} reply instead of a raw n8n 500."
+    },
+    {
+      "id": "parse-compare",
+      "name": "Parse Comparison",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        200
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "function extractApiError(resp) {\n  // n8n's continueOnFail error shape isn't fully consistent across versions,\n  // so try a few plausible spots rather than assuming one. Goal: get enough\n  // (an HTTP-ish status and/or Anthropic's own error.type) for the caller to\n  // tell 'worth retrying' (rate limit, overloaded, 5xx) apart from 'will never\n  // work' (bad API key, malformed request) rather than treating every failure\n  // the same.\n  let status = resp.statusCode || resp.httpCode\n    || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n  let apiErrorType = null;\n  let message = null;\n  const rawError = resp.error;\n  if (typeof rawError === 'string') {\n    message = rawError;\n  } else if (rawError && typeof rawError === 'object') {\n    message = rawError.message || rawError.description || JSON.stringify(rawError);\n    if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n  }\n  if (resp.type === 'error' && resp.error && resp.error.type) {\n    apiErrorType = resp.error.type;\n    message = resp.error.message || message;\n  }\n  return { message: message || 'Unknown error', status, apiErrorType };\n}\n\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Compare)').first().json;\n\nif (claudeResponse.error || claudeResponse.type === 'error') {\n  const info = extractApiError(claudeResponse);\n  return [{ json: { run_id: upstream.run_id, comparison: null, flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst comparison = toolUseBlocks.find((b) => b.name === 'submit_comparison');\nconst flags = toolUseBlocks.filter((b) => b.name === 'flag_new_field').map((b) => b.input);\n\nif (!comparison && flags.length === 0) {\n  return [{ json: { run_id: upstream.run_id, comparison: null, flags: [], error: `Claude did not call submit_comparison or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\nreturn [{\n  json: {\n    run_id: upstream.run_id,\n    comparison: comparison ? comparison.input : null,\n    flags,\n    raw_stop_reason: claudeResponse.stop_reason,\n    usage: claudeResponse.usage || null,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "respond-compare",
+      "name": "Return Comparison",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Plan Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request (Plan)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request (Plan)": {
+      "main": [
+        [
+          {
+            "node": "Claude — Plan Routes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude — Plan Routes": {
+      "main": [
+        [
+          {
+            "node": "Parse Route Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Route Plan": {
+      "main": [
+        [
+          {
+            "node": "Return Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request (Compare)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request (Compare)": {
+      "main": [
+        [
+          {
+            "node": "Claude — Compare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude — Compare": {
+      "main": [
+        [
+          {
+            "node": "Parse Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Comparison": {
+      "main": [
+        [
+          {
+            "node": "Return Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

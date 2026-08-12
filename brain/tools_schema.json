@@ -1,0 +1,93 @@
+{
+  "description": "Tool definitions for the Claude Messages API calls n8n makes to the brain. Paste the relevant tool(s) into the n8n HTTP Request node's body under `tools`, matching brain/system_prompt.md. force tool_choice so Claude always responds structurally rather than in free text.",
+  "tools": [
+    {
+      "name": "submit_route_plan",
+      "description": "Submit the plan for which market registry routes to attempt this run, with the non-sensitive parameters each one needs. Called once per profile variant if comparing multiple vehicle/coverage scenarios in one request.",
+      "input_schema": {
+        "type": "object",
+        "required": ["profile_label", "routes", "excluded_routes"],
+        "properties": {
+          "profile_label": {
+            "type": "string",
+            "description": "Short label distinguishing this plan if multiple profile variants were requested, e.g. '2026 Chevrolet Equinox' vs '2025 Chevrolet Equinox'."
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["registry_id", "priority", "params"],
+              "properties": {
+                "registry_id": { "type": "string", "description": "Must match an id in registry/market_registry.json." },
+                "priority": { "type": "integer", "description": "1 = attempt first." },
+                "params": {
+                  "type": "object",
+                  "description": "planning_safe fields only, named per schema/intake_schema.json, e.g. { \"vehicle_identity.model_year\": 2026, \"coverage_configuration.third_party_liability_limit\": 2000000 }."
+                },
+                "reason": { "type": "string", "description": "Why this route was selected for this profile." }
+              }
+            }
+          },
+          "excluded_routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["registry_id", "reason"],
+              "properties": {
+                "registry_id": { "type": "string" },
+                "reason": { "type": "string", "description": "e.g. duplicate_rate_source of another planned route, product_scope mismatch, still unresolved in the registry." }
+              }
+            }
+          },
+          "notes": { "type": "string", "description": "Anything the user should know about this plan before it runs." }
+        }
+      }
+    },
+    {
+      "name": "submit_comparison",
+      "description": "Submit the normalized, deduplicated comparison across all results collected for a run.",
+      "input_schema": {
+        "type": "object",
+        "required": ["profile_label", "results", "metrics", "summary_text"],
+        "properties": {
+          "profile_label": { "type": "string" },
+          "results": {
+            "type": "array",
+            "description": "Each item mirrors schema/quote_result_schema.json#result, enriched with variance_from_benchmark and any dedup notes.",
+            "items": { "type": "object" }
+          },
+          "metrics": {
+            "type": "object",
+            "required": ["market_completion", "comparable_quote_yield", "evidence_rate", "duplicate_suppression", "freshness"],
+            "properties": {
+              "market_completion": { "type": "number" },
+              "comparable_quote_yield": { "type": "number" },
+              "evidence_rate": { "type": "number" },
+              "duplicate_suppression": { "type": "integer" },
+              "freshness": { "type": "number" }
+            }
+          },
+          "gaps": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Plain statements of what remains unresolved/blocked/incomplete, per docs/KNOWN_LIMITATIONS.md style — no inflation, no silent drops."
+          },
+          "summary_text": { "type": "string", "description": "Human-readable summary for the one person this system serves." }
+        }
+      }
+    },
+    {
+      "name": "flag_new_field",
+      "description": "Raise an anomaly: input contained something that looks sensitive or unrecognized rather than a clean planning_safe field. Never process the suspected value — only describe what was observed.",
+      "input_schema": {
+        "type": "object",
+        "required": ["observed_at", "description"],
+        "properties": {
+          "observed_at": { "type": "string", "description": "Where in the input this was seen, e.g. 'route plan request, field vehicle_identity.owner_name'." },
+          "description": { "type": "string", "description": "What made this look sensitive or unrecognized — never repeat the actual value." },
+          "suggested_sensitivity": { "type": "string", "enum": ["vault_only", "planning_safe"] }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "$id": "ontario-quote-agent/quote_result_schema",
+  "description": "Normalized result of one attempted rate source, per challenge brief section 7. Produced by the worker (redacted) then enriched/normalized by the brain (Claude). Contains no sensitive fields.",
+  "status_enum": {
+    "quoted_comparable": "Exact premium and benchmark coverage matched.",
+    "quoted_non_comparable": "Exact premium returned, but one or more coverage assumptions differ.",
+    "estimate_only": "Indicative price, range, or lead estimate, not a firm quote.",
+    "callback_required": "A licensed representative must call before a rate is available.",
+    "manual_handoff": "Applicant or human operator is required for consent, identity, or advice.",
+    "ineligible": "The profile fails an approved rule or product requirement, with the stated reason.",
+    "affinity_restricted": "A valid group, employer, or membership relationship is required.",
+    "specialty_only": "The route does not write standard private-passenger use for this profile.",
+    "duplicate_rate_source": "A different brand or route resolved to the same underlying rate program.",
+    "not_currently_writing": "Evidence indicates no new applicable Ontario PPA business.",
+    "blocked": "Terms, CAPTCHA, authentication, or another access control prevents automation. Never bypassed.",
+    "unreachable": "A bounded number of attempts produced no response.",
+    "unresolved": "More research is required. Never silently converted to \"not offered\"."
+  },
+  "confidence_levels": {
+    "high": "Returned exact premium with matching benchmark coverage.",
+    "medium": "Licensed representative's documented quote.",
+    "low": "Estimate or unresolved coverage difference."
+  },
+  "bounded_attempt_policy": {
+    "web": "One normal attempt plus one retry for a transient technical error. No retry on rejection, CAPTCHA, or terms restriction.",
+    "outbound_voice": "One call during published sales hours, one retry only if the line fails before connection. Not implemented in this build (see docs/KNOWN_LIMITATIONS.md).",
+    "callback": "Wait through the declared callback window, then mark callback_required or unreachable with timestamps.",
+    "broker": "Ask once for the complete carrier list and all obtained quote outcomes; preserve the response as evidence.",
+    "unresolved_handling": "Unresolved records stay in the denominator. Never silently dropped."
+  },
+  "result": {
+    "source_identity": {
+      "registry_id": "string, FK into registry/market_registry.json",
+      "brand": "string",
+      "legal_underwriter": "string",
+      "insurer_group": "string",
+      "intermediary": "string, nullable",
+      "distinct_rate_source_id": "string, dedup key"
+    },
+    "outcome": {
+      "status": "one of status_enum",
+      "exact_quote_or_estimate": "quote | estimate",
+      "eligibility_result": "string",
+      "failure_reason": "string, nullable",
+      "next_action": "string, nullable"
+    },
+    "price": {
+      "annual_premium": "number, nullable",
+      "monthly_amount": "number, nullable",
+      "down_payment": "number, nullable",
+      "instalment_or_finance_charges": "number, nullable",
+      "taxes_or_fees": "number, nullable",
+      "total_estimated_cost": "number, nullable",
+      "currency": "CAD"
+    },
+    "coverage": {
+      "requested_limits": "object, mirrors schema/intake_schema.json#coverage_configuration",
+      "deductibles": "object",
+      "optional_benefits": "object, each: included | excluded | unavailable | unknown",
+      "endorsements": "array",
+      "variance_from_benchmark": "array of strings describing every difference"
+    },
+    "discounts": {
+      "applied": "array",
+      "available_not_selected": "array",
+      "conditional": "array, each with condition (purchase | bundle | membership | telematics)"
+    },
+    "validity": {
+      "quote_or_reference_id": "string, nullable",
+      "effective_date": "date",
+      "expiry_or_guarantee_date": "date, nullable",
+      "verification_may_change_premium": "boolean"
+    },
+    "evidence": {
+      "timestamp": "ISO 8601",
+      "source_url_or_public_phone_route": "string",
+      "redacted_artifact_ref": "string, path or hash — never the raw artifact if it contains sensitive data",
+      "evidence_hash": "string"
+    },
+    "confidence": "one of confidence_levels",
+    "privacy": {
+      "fields_disclosed_to_route": "array of field names only, from schema/intake_schema.json — never values",
+      "consent_receipt_ref": "string",
+      "retention_deadline": "date",
+      "secrets_excluded_from_logs_confirmed": "boolean"
+    }
+  },
+  "coverage_metrics": {
+    "market_completion": "count(distinct rate sources with evidence-backed terminal status) / count(verified applicable rate sources)",
+    "comparable_quote_yield": "count(quoted_comparable) / count(verified applicable rate sources)",
+    "evidence_rate": "count(outcomes with valid source + timestamp + redacted artifact) / count(all outcomes)",
+    "duplicate_suppression": "count(brands/routes mapped to an existing distinct_rate_source_id rather than counted twice)",
+    "freshness": "percentage of registry records with last_verified_at inside the current build window"
+  }
+}
