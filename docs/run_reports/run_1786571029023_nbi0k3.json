@@ -1,0 +1,139 @@
+{
+  "run_id": "run_1786571029023_nbi0k3",
+  "generated_at": "2026-08-12T21:44:29.744Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr (My vehicle)",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr (My vehicle)",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry with status active_mvp / listed in mvp_routes. product_scope standard_PPA fits a personal-use, owned, new 2025 Honda Civic. No overlap concern since it's the sole planned route this run.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8"
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Registry only has one route with a resolved, active status: rates_ca (mvp_routes = [rates_ca]). The long insurer_group list under underwriting_groups_seed (Intact, Aviva, Definity/Sonnet, TD, Desjardins, Wawanesa, etc.) is background/underwriting reference data, not actual routes — none of those entries have a registry_id, quote_url, or verified status, so I can't plan or exclude them as routes; they're still unresolved in the registry. If you want broader coverage this run (e.g. direct-to-Sonnet, belairdirect, TD, Desjardins), those need to be built out into proper registry entries first — happy to flag that as a backlog item rather than substitute something unverified.\n\nNo coverage_configuration fields (liability limit, deductibles, optional coverages) were present in this profile — only vehicle/ownership/use/licence-history fields. I passed those through as-is since none look identifying (no name, DOB, address, licence number, VIN — G1/G2/G values here are just years, and purchase price/kilometres are ordinary rating inputs). The rates.ca route will run with whatever coverage defaults the site applies unless coverage selections get added before this executes; flag that gap if a specific liability/deductible target matters for this comparison."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/autoquote/on/driver\" until \"load\"\n  navigated to \"https://ratesinsuranceservices.rates.ca/autoquote/on/vehicle\"\n============================================================",
+          "evidence": {
+            "timestamp": "2026-08-12T21:44:29.748Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/ea3b6ffd-dd8f-40c2-95c2-45c61017e1cc/1786571137694_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr (My vehicle)",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "Single attempt this run; no other route reached the same or a related underlying rate program yet, so no dedup logic applies.",
+            "outcome": {
+              "failure_reason": "page.waitForURL: Timeout 30000ms exceeded while waiting for navigation from the vehicle step to the driver step of the Rates.ca autoquote flow. The automation stalled on the vehicle page and never reached a quote.",
+              "classification": "technical_failure_not_a_market_finding"
+            },
+            "evidence": {
+              "timestamp": "2026-08-12T21:44:29.748Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/ea3b6ffd-dd8f-40c2-95c2-45c61017e1cc/1786571137694_final.png"
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "Quote flow did not progress past the vehicle-entry step, so no coverage terms, deductible, or benchmark comparison could be obtained — this is a gap in data collection, not a finding that Rates.ca doesn't match the benchmark."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "gaps": [
+          "Rates.ca did not return a quote this run — the automation timed out navigating from the vehicle step to the driver step, so no premium, deductible, or coverage detail was obtained.",
+          "No comparable quotes exist yet for this profile from any route; market completion is 0% for this run.",
+          "Discount status (winter tires) was never disclosed since the flow didn't progress far enough to reach that step.",
+          "This is a single-route result — no other insurer/broker routes were included in this batch, so no cross-market comparison or duplicate-detection was possible yet.",
+          "Retry of the Rates.ca route (or a check of whether the site changed its flow) is needed before this market relationship can be counted as reached."
+        ],
+        "summary_text": "Nothing to compare yet on this run. The only route attempted — Rates.ca — timed out on the vehicle step and never got to a driver page or a quote, so there's no premium, deductible, or discount info to report. That's a scraper/automation failure, not a signal that Rates.ca doesn't offer this coverage or is pricier/cheaper — treat it as a blank, not a data point. Market completion for this batch is 0%. Next step is a retry (and ideally more routes in the same batch so there's actually something to line up side by side)."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 7125,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 3670,
+          "output_tokens_details": {
+            "thinking_tokens": 2672
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr (My vehicle)",
+        "usage": {
+          "input_tokens": 4843,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1882,
+          "output_tokens_details": {
+            "thinking_tokens": 785
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 17520
+  }
+}

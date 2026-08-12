@@ -2,50 +2,80 @@
 /**
  * Rates.ca — aggregator route. registry_id: rates_ca (MVP).
  *
- * Verified live on 2026-08-12 via a discovery-only pass using placeholder
- * data (never a real applicant), walking Vehicle Info → Driver Info →
- * Discount Info. Stopped deliberately at the consent checkbox on the
- * Discount Info page — never checked it, never clicked "Get Free Quotes" —
- * since that checkbox is a consent attestation under the brief's own rule
- * ("pause before any identity lookup, consent attestation, signature,
- * payment or purchase action"), not something this recipe decides on my
- * behalf. See the pauseForHuman() call below.
+ * Originally verified live on 2026-08-12 via a discovery-only pass using
+ * placeholder data (never a real applicant), walking Vehicle Info → Driver
+ * Info → Discount Info. Re-verified live again the same day after real
+ * end-to-end runs surfaced several bugs no screenshot would have caught —
+ * see worker/lib/recipe_lib.js's :visible/keyup fixes and
+ * docs/KNOWN_LIMITATIONS.md. Stopped deliberately at the consent checkbox on
+ * the Discount Info page — never checked it, never clicked "Get Free
+ * Quotes" — since that checkbox is a consent attestation under the brief's
+ * own rule ("pause before any identity lookup, consent attestation,
+ * signature, payment or purchase action"), not something this recipe
+ * decides on my behalf. See the pauseForHuman() call below.
  *
- * Real flow, confirmed selectors (ids are stable, verified live):
- *   1. https://rates.ca/  — #postal-code-input, #submitBtn -> navigates to
- *      ratesinsuranceservices.rates.ca/autoquote/on/vehicle
- *   2. Vehicle Info (.../autoquote/on/vehicle) — cascading selects:
- *      vehicle-year0 -> vehicle-make0 -> vehicle-model0 (each unlocks the
- *      next). vehicle-model0's options are full trim strings (e.g.
- *      "BLAZER LT 4DR AWD"), not a plain model name — see pickBestModelOption()
- *      below for how this recipe approximates a match; this is a real
- *      limitation, not a guess dressed up as certainty.
- *      Also: is-leased0, acquired-month0/year0, winter-tires0,
- *      overnight-parking0, primary-use0, daily-distance0, annual-distance0,
- *      comprehensive-coverage0, collision-coverage0. Anti-theft checkboxes
- *      (anti-theft-10/20/30) exist but weren't mapped — left unchecked
- *      (matches "No" default), a real gap if winter_tires/anti-theft
- *      discounts matter to the comparison.
- *   3. Driver Info (.../autoquote/on/driver) — first-name0, last-name[0],
- *      dob-month0/day0/year0, gender0, marital-status0,
- *      occupational-status0 (numeric codes, see OCCUPATION_CODES below),
- *      license-class0, has-foreign-license0, first-license-age0,
- *      full-license-month0/year0, has-driver-education0, first-insured-year0,
- *      time-with-insurer0, then Yes/No + repeating detail groups for
- *      cancellations/suspensions/accidents/tickets, then policy-start-date0.
- *      IMPORTANT: only the "0 events" path (num-cancellations=0,
- *      num-suspensions0=0, num-accidents0=0, num-tickets0=0) was actually
- *      exercised live. The >0 path below is a best-effort implementation of
- *      what the DOM structure implies (per-event reason/month/year selects
- *      named e.g. accident-year0-0, accident-month0-0), not something I
- *      watched unlock and fill in a real session — verify it before relying
- *      on it for anyone with a real driving history to report.
- *   4. Discount Info (.../autoquote/on/discounts) — bundle-discount (radio
- *      group: bundle-homeowners/bundle-condominium/bundle-tenants/bundle-0),
- *      caa-member, telematics-discount, group-discount (text, optional),
- *      email, phone, then #signup-weekly-mandatory (the consent checkbox —
- *      confirmed via its own label/parent text to be the exact "I agree..."
- *      paragraph), then #discount-form-submit ("Get Free Quotes").
+ * SELECTOR STRATEGY: this recipe uses label-text selectors
+ * (`label:has-text("...") ~ select/input`), not raw internal ids, for every
+ * field confirmed live in the second verification pass — matching the
+ * pattern already used in sonnet.js/td_insurance.js/onlia.js. Confirmed
+ * live that this site duplicates form markup across responsive breakpoints
+ * (the same id can appear on 3 elements), which label text sidesteps for
+ * the id-churn case, though not for a question moving or disappearing
+ * outright (see the winter-tires handling below, and
+ * docs/KNOWN_LIMITATIONS.md's stated-next-step note on Claude-assisted live
+ * field matching). A few fields remain id-based, explicitly marked below,
+ * where live label text wasn't confirmed this pass (the >0-events history
+ * sub-flow, policy-start-date0) or where the field is conditionally hidden
+ * rather than simply labeled (has-driver-education0).
+ *
+ * CONFIRMED LIVE LABEL TEXT, in flow order:
+ *   1. https://rates.ca/ — postal code input (`#postal-code-input:visible`,
+ *      no stable label; id kept — every duplicate across breakpoints has
+ *      the same placeholder, not distinguishing label text), Get Quotes
+ *      button (`#submitBtn:visible`) -> navigates to
+ *      ratesinsuranceservices.rates.ca/autoquote/on/vehicle.
+ *   2. Vehicle Info: "Vehicle year" -> "Vehicle make" -> "Vehicle model"
+ *      (cascading — each unlocks the next; vehicle-model0's options are
+ *      full trim strings, e.g. "CIVIC LX 4DR", not a plain model name — see
+ *      pickBestModelOption() for the fuzzy match this requires), "Is the
+ *      vehicle financed or leased?", "Vehicle purchase date" (one label
+ *      over two selects, addressed by position), "Where is this vehicle
+ *      parked overnight?", "Do you plan to or currently have any anti-theft
+ *      devices installed?" (present but not yet mapped to a schema field —
+ *      same documented gap as before), "What is the primary use of this
+ *      vehicle?", "How many kilometres are driven to work or school one way
+ *      (each day)?", "How many total kilometres are driven each year?",
+ *      "Comprehensive Coverage", "Collision Coverage". CONFIRMED LIVE: no
+ *      winter-tires question exists on this page at all anymore — the
+ *      original recipe's `#winter-tires0` selector was a stale assumption,
+ *      not something the site ever surfaced during this pass. Handled by
+ *      skipping gracefully and noting the gap rather than failing the route.
+ *   3. Driver Info: "First name", "Last name", "Date of birth" (one label,
+ *      three selects by position), "Gender", "Marital status",
+ *      "Occupational status", "What type of licence does Driver #1
+ *      currently hold?", "Did Driver #1 previously hold a full licence
+ *      elsewhere in Canada or the U.S.?", "How old was Driver #1 when he or
+ *      she was first licensed in Ontario?", "G licence date" (one label,
+ *      two selects), then "When was [name] first listed as a driver on an
+ *      insurance policy..." and "How long has [name] been with their
+ *      current insurance company?" — both labels are dynamically generated
+ *      to include the entered first name, so matched here on a stable
+ *      substring rather than the full text. has-driver-education0 is
+ *      CONFIRMED conditionally hidden (its container is display:none until
+ *      some other condition is met, not simply absent) — kept id-based with
+ *      a graceful skip, unlike winter-tires which is confirmed genuinely
+ *      gone. The cancellations/suspensions/accidents/tickets history
+ *      questions and policy-start-date0 remain id-based below — only the
+ *      "0 events" path was exercised live this pass; the same
+ *      not-yet-live-verified caveat from before still applies to the >0
+ *      path and these labels specifically.
+ *   4. Discount Info: bundle-discount radio group (the "No, I don't want
+ *      this discount" option, confirmed via its own label text), "...member
+ *      of CAA" (substring), "...scores your driving habits" (substring,
+ *      telematics), "...provide your email address..." (substring),
+ *      "Phone number", then the consent checkbox (confirmed via its own "I
+ *      agree" label) and "Get Free Quotes" button — both left to me, per
+ *      the pauseForHuman() checkpoint below.
  */
 
 const OCCUPATION_CODES = {
@@ -56,29 +86,57 @@ const OCCUPATION_CODES = {
 };
 
 /**
- * vehicle-model0's options are full trim strings. Pick the first option whose
- * text starts with the requested model name (case-insensitive) — an
- * approximation, not an exact trim match. Logged so it shows up in evidence.
+ * vehicle-model0's options are full trim strings (e.g. "CIVIC LX 4DR"), so a
+ * requested model like "Civic 4dr" rarely matches exactly or even as a
+ * prefix — the trim code sits in the middle. Rather than hard-failing the
+ * whole route over an inexact trim match (confirmed live: this happened for
+ * a real profile), this tries progressively looser matches and always
+ * returns which tier it used, so the recipe can be honest in its result
+ * about a substitution rather than silently treating it as exact. Only
+ * throws if nothing even matches the base model name (first word) — that
+ * case would mean picking a genuinely different vehicle, which is a real
+ * failure, not an imprecise trim.
  */
 async function pickBestModelOption(page, requestedModel) {
   // getElementById always returns the first match in document order, which
   // may not be the visible one if this id is duplicated across responsive
   // breakpoints (confirmed live for other fields on this page) — filter to
-  // the actually-visible element instead.
-  const value = await page.evaluate((wanted) => {
-    const els = Array.from(document.querySelectorAll('#vehicle-model0'));
-    const el = els.find((e) => e.offsetParent !== null) || els[0];
+  // the actually-visible element instead. Selected by label text below;
+  // options are still read via the DOM directly since building the full
+  // trim list isn't something selectOption's own matching can fuzzy-match.
+  const result = await page.evaluate((wanted) => {
+    const labels = Array.from(document.querySelectorAll('label')).filter((l) => l.textContent.trim() === 'Vehicle model');
+    const label = labels.find((l) => l.closest('div')?.querySelector('select')?.offsetParent !== null) || labels[0];
+    const el = label ? label.closest('div')?.querySelector('select') : null;
     if (!el) return null;
-    const match = Array.from(el.options).find(
-      (o) => o.value && o.value.toUpperCase().startsWith(String(wanted).toUpperCase())
-    );
-    return match ? match.value : null;
+    const options = Array.from(el.options).filter((o) => o.value);
+    const wantedUpper = String(wanted).toUpperCase().trim();
+    const words = wantedUpper.split(/\s+/).filter(Boolean);
+
+    let match = options.find((o) => o.value.toUpperCase().trim() === wantedUpper);
+    if (match) return { value: match.value, text: match.textContent.trim(), tier: 'exact' };
+
+    match = options.find((o) => o.value.toUpperCase().startsWith(wantedUpper));
+    if (match) return { value: match.value, text: match.textContent.trim(), tier: 'prefix' };
+
+    // Every word from the request appears somewhere in the option (any
+    // order), e.g. requested "CIVIC 4DR" matches option "CIVIC LX 4DR".
+    match = options.find((o) => words.every((w) => o.value.toUpperCase().includes(w)));
+    if (match) return { value: match.value, text: match.textContent.trim(), tier: 'partial_word_match' };
+
+    // Last resort: same base model name (first word) only — still the
+    // right vehicle model, just an unconfirmed trim.
+    match = options.find((o) => words[0] && o.value.toUpperCase().includes(words[0]));
+    if (match) return { value: match.value, text: match.textContent.trim(), tier: 'base_model_only' };
+
+    return null;
   }, requestedModel);
-  if (!value) {
-    throw new Error(`No vehicle-model0 option starts with "${requestedModel}" — model list may have changed.`);
+
+  if (!result) {
+    throw new Error(`No vehicle-model option matches even the base model name in "${requestedModel}" — model list may have changed.`);
   }
-  await page.selectOption('#vehicle-model0:visible', value);
-  return value;
+  await page.selectOption('label:has-text("Vehicle model") ~ * select:visible, label:has-text("Vehicle model") ~ select:visible', result.value);
+  return result;
 }
 
 module.exports = {
@@ -88,16 +146,17 @@ module.exports = {
   },
 
   async run(page, ctx) {
-    const { lib, params, vaultPassphrase } = ctx;
+    const { lib, params, vaultPassphrase, routeId, runId, n8nBaseUrl } = ctx;
     const maskSelectors = [];
+    const gapNotes = [];
 
     // ---- Entry: postal code ----
-    // Confirmed live (2026-08-12 real run): #postal-code-input matches 3
-    // elements on this page, not 1 — plausibly duplicate markup across
-    // responsive breakpoints. Playwright's default "first match" picked a
-    // non-visible one and timed out waiting for it to become interactable.
-    // :visible filters to the one actually on screen. If other selectors in
-    // this recipe hit the same issue on a future run, apply the same fix.
+    // Confirmed live: #postal-code-input matches 3 elements on this page,
+    // not 1 — plausibly duplicate markup across responsive breakpoints.
+    // Playwright's default "first match" picked a non-visible one and timed
+    // out waiting for it to become interactable. :visible filters to the
+    // one actually on screen. No stable label text distinguishes the 3
+    // duplicates (same placeholder on each), so this one stays id-based.
     await page.goto(module.exports.meta.entryUrl, { waitUntil: 'domcontentloaded' });
     await lib.fillFromVault(page, '#postal-code-input:visible', 'primary_address.postal_code', vaultPassphrase);
     maskSelectors.push('#postal-code-input:visible');
@@ -109,41 +168,109 @@ module.exports = {
     // (year unlocks make, make unlocks model) — the default waitForSelector
     // state is 'visible', which an <option> inside a closed <select> never
     // satisfies, so this would time out unconditionally regardless of the
-    // site. 'attached' (present in the DOM) is the correct check here, and
-    // scoping to the visible <select> avoids counting a hidden duplicate's
-    // options.
-    await lib.selectPlanning(page, '#vehicle-year0', String(params['vehicle_identity.model_year']));
-    await page.waitForSelector('#vehicle-make0:visible option:not([value=""])', { state: 'attached' });
-    await lib.selectPlanning(page, '#vehicle-make0', String(params['vehicle_identity.make']).toUpperCase());
-    await page.waitForSelector('#vehicle-model0:visible option:not([value=""])', { state: 'attached' });
-    await pickBestModelOption(page, params['vehicle_identity.model']);
+    // site. 'attached' (present in the DOM) is the correct check here.
+    await lib.selectPlanning(page, 'label:has-text("Vehicle year") ~ select', String(params['vehicle_identity.model_year']));
+    await page.waitForSelector('label:has-text("Vehicle make") ~ * select:visible option:not([value=""]), label:has-text("Vehicle make") ~ select:visible option:not([value=""])', { state: 'attached' });
+    await lib.selectPlanning(page, 'label:has-text("Vehicle make") ~ select', String(params['vehicle_identity.make']).toUpperCase());
+    await page.waitForSelector('label:has-text("Vehicle model") ~ * select:visible option:not([value=""]), label:has-text("Vehicle model") ~ select:visible option:not([value=""])', { state: 'attached' });
+    const modelMatch = await pickBestModelOption(page, params['vehicle_identity.model']);
 
     if (params['ownership.owned_or_leased']) {
       const leaseMap = { owned: '0', leased: '1', financed: '2' };
-      await lib.selectPlanning(page, '#is-leased0', leaseMap[params['ownership.owned_or_leased']] || '0');
+      await lib.selectPlanning(page, 'label:has-text("Is the vehicle financed or leased?") ~ select', leaseMap[params['ownership.owned_or_leased']] || '0');
     }
     if (params['ownership.purchase_or_lease_month_year']) {
-      const [pMonth, pYear] = String(params['ownership.purchase_or_lease_month_year']).split('-');
-      if (pMonth) await lib.selectPlanning(page, '#acquired-month0', String(Number(pMonth)));
-      if (pYear) await lib.selectPlanning(page, '#acquired-year0', pYear);
+      // Format: MM-YYYY, matching the same field's parsing in
+      // sonnet.js/td_insurance.js (onlia.js assumes YYYY-MM instead — a
+      // pre-existing inconsistency across recipes, not something
+      // introduced here; not resolved in this pass since it's a separate,
+      // broader question of which format the vault actually stores and is
+      // out of scope for tonight's fix).
+      const [pMonth, pYearStr] = String(params['ownership.purchase_or_lease_month_year']).split('-');
+      const pYear = Number(pYearStr);
+      // Confirmed live: this site rejects (resets to blank + shows an
+      // error) any purchase date more than 60 days in the past — it's
+      // asking specifically about a recent purchase, not vehicle
+      // ownership history in general. Filling the real (usually older)
+      // vault date just gets silently rejected and blocks Continue, so
+      // this only fills when the real date actually qualifies.
+      const purchaseDate = pMonth && pYear ? new Date(pYear, Number(pMonth) - 1, 1) : null;
+      const daysSincePurchase = purchaseDate ? (Date.now() - purchaseDate.getTime()) / 86400000 : Infinity;
+      if (purchaseDate && daysSincePurchase <= 60) {
+        await lib.selectPlanning(page, 'label:has-text("Vehicle purchase date") ~ * select >> nth=0', String(Number(pMonth)));
+        await lib.selectPlanning(page, 'label:has-text("Vehicle purchase date") ~ * select >> nth=1', String(pYear));
+      } else if (purchaseDate) {
+        // A real vault value exists, but this site's own constraint means
+        // it can never be entered as-is — genuinely a judgment call
+        // (skip vs. a reasonable default), not a static mapping problem.
+        // Consult the brain rather than hardcoding one answer: it only
+        // ever sees this question's label/type/error text, never the
+        // actual purchase date.
+        const [resolution] = await lib.resolveFieldsWithBrain([{
+          question_id: 'vehicle_purchase_date',
+          label: 'Vehicle purchase date',
+          field_type: 'date_group (Month select + Year select)',
+          options: null,
+          error_text: 'Please select a vehicle purchase date that is no further than 60 days from today.',
+          is_mandatory: true,
+        }], { n8nBaseUrl, routeId, runId, profileContext: params });
+
+        // Handled generically rather than only the one strategy expected
+        // for this question — an administrative date constraint shouldn't
+        // realistically come back use_inferred_value/pause_and_ask (the
+        // output guardrail forces use_inferred_value to unresolved anyway
+        // here, since this question has no options list to validate
+        // against), but the recipe shouldn't silently drop a resolution it
+        // doesn't recognize either.
+        if (resolution.strategy === 'use_today_date') {
+          const today = new Date();
+          await lib.selectPlanning(page, 'label:has-text("Vehicle purchase date") ~ * select >> nth=0', String(today.getMonth() + 1));
+          await lib.selectPlanning(page, 'label:has-text("Vehicle purchase date") ~ * select >> nth=1', String(today.getFullYear()));
+          gapNotes.push(`Vehicle purchase date: used today's date to satisfy Rates.ca's requirement — the real purchase date on file doesn't qualify (${resolution.reason || 'more than 60 days ago'}).`);
+        } else if (resolution.strategy === 'pause_and_ask') {
+          await lib.pauseForHuman(
+            `The brain flagged "Vehicle purchase date" as needing your input rather than a guess: ${resolution.reason || 'no confident answer available'}. ` +
+              'Fill it in yourself in the browser window if you can, then press Enter to continue — or leave it and press Enter to proceed without it.'
+          );
+          gapNotes.push(`Vehicle purchase date: paused for human input — ${resolution.reason || 'the brain judged this shouldn\'t be answered automatically'}.`);
+        } else {
+          gapNotes.push(`Vehicle purchase date left blank — ${resolution.reason || "the real purchase date on file doesn't satisfy this site's 60-day requirement, and no fallback was resolved"}.`);
+        }
+      }
     }
-    await lib.selectPlanning(page, '#winter-tires0', params['risk_details.winter_tires'] ? '1' : '0');
+    // Confirmed live (2026-08-12, second pass): this question no longer
+    // exists on the page at all — not an id change, genuinely gone. Skipped
+    // rather than failing the whole route; noted honestly in the result
+    // rather than silently treated as "no" the way it was before.
+    // Confirmed live: the label text matches a hidden duplicate (same
+    // responsive-breakpoint duplication seen elsewhere on this page) even
+    // when the question is genuinely absent from the visible page — must
+    // check :visible specifically, not just presence anywhere in the DOM.
+    const winterTiresCount = await page.locator('label:has-text("Winter tires"):visible').count().catch(() => 0);
+    if (winterTiresCount > 0) {
+      await lib.selectPlanning(page, 'label:has-text("Winter tires") ~ select', params['risk_details.winter_tires'] ? '1' : '0');
+    } else {
+      gapNotes.push('The winter tires discount question no longer appears on Rates.ca\'s Vehicle Info page (confirmed absent, not just an automation gap) — winter tire status could not be communicated to this site.');
+    }
     if (params['risk_details.overnight_parking_location']) {
-      await lib.selectPlanning(page, '#overnight-parking0', params['risk_details.overnight_parking_location']);
+      await lib.selectPlanning(page, 'label:has-text("Where is this vehicle parked overnight?") ~ select', params['risk_details.overnight_parking_location']);
     }
-    // Anti-theft checkboxes (anti-theft-10/20/30) intentionally left unchecked —
-    // not yet mapped to a schema field. Leaving as "No" is honest (matches the
-    // discovery-pass default) but may undercount a real discount.
-    await lib.selectPlanning(page, '#primary-use0', params['use.use_type'] === 'business' ? 'business' : 'personal');
-    if (params['use.one_way_commute_distance']) {
-      await lib.selectPlanning(page, '#daily-distance0', String(params['use.one_way_commute_distance']));
+    // Anti-theft checkboxes exist but aren't yet mapped to a schema field —
+    // left unchecked (matches "No" default), a real gap if that discount
+    // matters to the comparison.
+    await lib.selectPlanning(page, 'label:has-text("What is the primary use of this vehicle?") ~ select', params['use.use_type'] === 'business' ? 'business' : 'personal');
+    // != null (not a plain truthy check): confirmed live that a real 0 here
+    // (e.g. working from home) was being treated as "not provided" and
+    // skipped, even though the site requires an answer either way.
+    if (params['use.one_way_commute_distance'] != null) {
+      await lib.selectPlanning(page, 'label:has-text("How many kilometres are driven to work or school one way") ~ select', String(params['use.one_way_commute_distance']));
     }
-    if (params['use.annual_kilometres']) {
-      await lib.selectPlanning(page, '#annual-distance0', String(params['use.annual_kilometres']));
+    if (params['use.annual_kilometres'] != null) {
+      await lib.selectPlanning(page, 'label:has-text("How many total kilometres are driven each year?") ~ select', String(params['use.annual_kilometres']));
     }
     const ownDamage = String(params['coverage_configuration.own_damage_coverage'] || '');
-    await lib.selectPlanning(page, '#comprehensive-coverage0', /comprehensive/i.test(ownDamage) ? '1' : '0');
-    await lib.selectPlanning(page, '#collision-coverage0', /collision/i.test(ownDamage) ? '1' : '0');
+    await lib.selectPlanning(page, 'label:has-text("Comprehensive Coverage") ~ select', /comprehensive/i.test(ownDamage) ? '1' : '0');
+    await lib.selectPlanning(page, 'label:has-text("Collision Coverage") ~ select', /collision/i.test(ownDamage) ? '1' : '0');
 
     await page.click('button:has-text("Continue"):visible');
     await page.waitForURL('**/autoquote/on/driver');
@@ -158,71 +285,82 @@ module.exports = {
     // than read fresh per-field), so they go through fillSensitive/
     // selectSensitive — same :visible scoping and sanitized-error protection
     // as fillFromVault/selectFromVault, just without re-reading the vault.
-    // Manual maskSelectors.push() isn't needed for these — both helpers
-    // track automatically.
     const fullName = await lib.readVaultValue('identity.legal_name', vaultPassphrase);
     const spaceIdx = fullName.indexOf(' ');
     const first = spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx);
     const last = spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1);
-    await lib.fillSensitive(page, '#first-name0', first, 'identity.legal_name (first)');
-    await lib.fillSensitive(page, '#last-name\\[0\\]', last, 'identity.legal_name (last)');
+    await lib.fillSensitive(page, 'label:has-text("First name") ~ input', first, 'identity.legal_name (first)');
+    await lib.fillSensitive(page, 'label:has-text("Last name") ~ input', last, 'identity.legal_name (last)');
 
     // Expected vault format: YYYY-MM-DD.
     const dobRaw = await lib.readVaultValue('identity.date_of_birth', vaultPassphrase);
     const [dobYear, dobMonth, dobDay] = String(dobRaw).split('-');
     if (dobYear && dobMonth && dobDay) {
-      await lib.selectSensitive(page, '#dob-month0', String(Number(dobMonth)), 'identity.date_of_birth (month)');
-      await lib.selectSensitive(page, '#dob-day0', String(Number(dobDay)), 'identity.date_of_birth (day)');
-      await lib.selectSensitive(page, '#dob-year0', dobYear, 'identity.date_of_birth (year)');
+      await lib.selectSensitive(page, 'label:has-text("Date of birth") ~ * select >> nth=0', String(Number(dobMonth)), 'identity.date_of_birth (month)');
+      await lib.selectSensitive(page, 'label:has-text("Date of birth") ~ * select >> nth=1', String(Number(dobDay)), 'identity.date_of_birth (day)');
+      await lib.selectSensitive(page, 'label:has-text("Date of birth") ~ * select >> nth=2', dobYear, 'identity.date_of_birth (year)');
     }
 
     const genderValue = await lib.readVaultValue('identity.gender_field_as_required_by_form', vaultPassphrase);
     if (genderValue) {
       const g = String(genderValue).toUpperCase();
-      await lib.selectSensitive(page, '#gender0', g.startsWith('F') ? 'F' : g.startsWith('M') ? 'M' : 'X', 'identity.gender_field_as_required_by_form');
+      await lib.selectSensitive(page, 'label:has-text("Gender") ~ select', g.startsWith('F') ? 'F' : g.startsWith('M') ? 'M' : 'X', 'identity.gender_field_as_required_by_form');
     }
 
     if (params['identity.marital_status']) {
       const maritalMap = { single: 'single', married: 'married' };
-      await lib.selectPlanning(page, '#marital-status0', maritalMap[params['identity.marital_status']] || 'other');
+      await lib.selectPlanning(page, 'label:has-text("Marital status") ~ select', maritalMap[params['identity.marital_status']] || 'other');
     }
     if (params['identity.occupational_status']) {
       const code = OCCUPATION_CODES[String(params['identity.occupational_status']).toLowerCase()];
-      if (code) await lib.selectPlanning(page, '#occupational-status0', code);
+      if (code) await lib.selectPlanning(page, 'label:has-text("Occupational status") ~ select', code);
     }
     if (params['licence_identity.class']) {
       const classMap = { G1: 'provisional', G2: 'probationary', G: 'full' };
-      await lib.selectPlanning(page, '#license-class0', classMap[params['licence_identity.class']] || 'full');
+      await lib.selectPlanning(page, 'label:has-text("What type of licence does Driver") ~ select', classMap[params['licence_identity.class']] || 'full');
     }
-    await lib.selectPlanning(page, '#has-foreign-license0', params['licensing_timeline.out_of_country_experience_recognized'] ? '1' : '0');
+    await lib.selectPlanning(page, 'label:has-text("previously hold a full licence") ~ select', params['licensing_timeline.out_of_country_experience_recognized'] ? '1' : '0');
     if (params['licensing_timeline.first_licensed_age']) {
-      await lib.fillPlanning(page, '#first-license-age0', String(params['licensing_timeline.first_licensed_age']));
+      await lib.fillPlanning(page, 'label:has-text("first licensed in Ontario") ~ input', String(params['licensing_timeline.first_licensed_age']));
     }
     if (params['licensing_timeline.g_date_or_year']) {
       const [gMonth, gYear] = String(params['licensing_timeline.g_date_or_year']).split('-');
-      if (gMonth) await lib.selectPlanning(page, '#full-license-month0', String(Number(gMonth)));
-      if (gYear) await lib.selectPlanning(page, '#full-license-year0', gYear);
+      if (gMonth) await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=0', String(Number(gMonth)));
+      if (gYear) await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=1', gYear);
     }
-    await lib.selectPlanning(page, '#has-driver-education0', params['training.approved_driver_training_completed'] ? '1' : '0');
+    // Confirmed live: this field is conditionally hidden (its container is
+    // display:none until some other condition is met), not simply absent
+    // like winter-tires — kept id-based since no visible label text exists
+    // to match while hidden, and skipped gracefully rather than failing.
+    const driverEdCount = await page.locator('#has-driver-education0:visible').count().catch(() => 0);
+    if (driverEdCount > 0) {
+      await lib.selectPlanning(page, '#has-driver-education0', params['training.approved_driver_training_completed'] ? '1' : '0');
+    } else {
+      gapNotes.push('The driver education discount question was not visible for this profile (Rates.ca shows it conditionally) — could not communicate driver training status to this site.');
+    }
     if (params['current_insurance.first_insured_year']) {
-      await lib.selectPlanning(page, '#first-insured-year0', String(params['current_insurance.first_insured_year']));
+      // Label is dynamically generated to include the entered first name
+      // ("When was <name> first listed..."), so matched on a stable
+      // substring rather than the full text.
+      await lib.selectPlanning(page, 'label:has-text("first listed as a driver on an insurance policy") ~ select', String(params['current_insurance.first_insured_year']));
     }
-    if (params['current_insurance.years_continuously_insured']) {
-      // getElementById returns the first match regardless of visibility —
-      // same duplicate-id issue as elsewhere on this page.
+    if (params['current_insurance.years_continuously_insured'] != null) {
+      // Same dynamic-name-in-label situation as first_insured_year above.
       const opts = await page.evaluate(() => {
-        const els = Array.from(document.querySelectorAll('#time-with-insurer0'));
-        const el = els.find((e) => e.offsetParent !== null) || els[0];
+        const labels = Array.from(document.querySelectorAll('label')).filter((l) => /been with their current insurance company/i.test(l.textContent));
+        const label = labels.find((l) => l.closest('div')?.querySelector('select')?.offsetParent !== null) || labels[0];
+        const el = label ? label.closest('div')?.querySelector('select') : null;
         return el ? Array.from(el.options).map((o) => o.value) : [];
       });
-      if (opts.length > 1) await lib.selectPlanning(page, '#time-with-insurer0', opts[1]);
+      if (opts.length > 1) await lib.selectPlanning(page, 'label:has-text("been with their current insurance company") ~ select', opts[1]);
     }
 
     // ---- History: cancellations / suspensions / accidents / tickets ----
-    // Only the zero-events path (all four "No") is live-verified. The >0
-    // path's per-event selects (e.g. accident-month0-0) are implemented from
-    // what the DOM structure implies, not from watching them actually unlock
-    // in a live run — verify before relying on this for a real history.
+    // Only the zero-events path (all four "No") is live-verified, in either
+    // pass. The >0 path's per-event selects (e.g. accident-month0-0) are
+    // implemented from what the DOM structure implies, not something
+    // watched unlock and fill live — kept id-based, verify before relying
+    // on this for anyone with a real driving history to report.
     const cancellationsAll = lib.parseEvents(
       await lib.readVaultValue('insurance_cancellations.events', vaultPassphrase)
     );
@@ -269,15 +407,16 @@ module.exports = {
     await page.waitForURL('**/autoquote/on/discounts');
 
     // ---- Discount Info ----
-    await page.click('#bundle-0:visible'); // "No, I don't want this discount" — safest default, no household-composition data assumed
+    // The radio's own <label> wraps it — clicking the label text toggles
+    // the underlying radio, confirmed live.
+    await page.click('label:has-text("No, I don\'t want this discount"):visible'); // safest default, no household-composition data assumed
     if (params['discount_eligibility.good_driver_or_group_discounts']) {
       const discounts = params['discount_eligibility.good_driver_or_group_discounts'];
-      await lib.selectPlanning(page, '#caa-member', Array.isArray(discounts) && discounts.includes('CAA') ? '1' : '0');
+      await lib.selectPlanning(page, 'label:has-text("member of CAA") ~ select', Array.isArray(discounts) && discounts.includes('CAA') ? '1' : '0');
     }
-    await lib.selectPlanning(page, '#telematics-discount', params['discount_eligibility.telematics_opt_in'] ? '1' : '0');
-    await lib.fillFromVault(page, '#email', 'contact.email', vaultPassphrase);
-    await lib.fillFromVault(page, '#phone', 'contact.mobile_phone', vaultPassphrase);
-    maskSelectors.push('#email', '#phone');
+    await lib.selectPlanning(page, 'label:has-text("scores your driving habits") ~ select', params['discount_eligibility.telematics_opt_in'] ? '1' : '0');
+    await lib.fillFromVault(page, 'label:has-text("provide your email address") ~ input', 'contact.email', vaultPassphrase);
+    await lib.fillFromVault(page, 'label:has-text("Phone number") ~ input', 'contact.mobile_phone', vaultPassphrase);
 
     const originalUrl = page.url();
 
@@ -307,15 +446,22 @@ module.exports = {
       );
     }
 
+    if (modelMatch.tier !== 'exact') {
+      const tierLabel = modelMatch.tier === 'prefix' ? 'closest prefix' : modelMatch.tier === 'partial_word_match' ? 'closest trim match' : 'same model, unconfirmed trim';
+      gapNotes.push(`Requested vehicle model "${params['vehicle_identity.model']}" wasn't listed exactly — quoted trim is actually "${modelMatch.text}" (match: ${tierLabel}). Verify this matches your actual vehicle before treating the quote as final.`);
+    }
+
     return {
       status: lib.STATUS.QUOTED_NON_COMPARABLE,
       failure_reason: null,
       outcome: {
         exact_quote_or_estimate: 'quote',
         eligibility_result: 'returned_a_result_page',
-        next_action:
+        next_action: [
           'Capture the actual returned premiums/underwriters from the Your Quotes page — this recipe stops at ' +
-          'detecting a successful submission and has not yet been extended to parse the results table itself.',
+            'detecting a successful submission and has not yet been extended to parse the results table itself.',
+          ...gapNotes,
+        ].join(' '),
       },
       maskSelectors,
     };

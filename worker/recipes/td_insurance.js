@@ -283,7 +283,9 @@ module.exports = {
     await page.click('text=Next');
 
     // ---- Insurance and Claims History (cont'd) ----
-    if (params['current_insurance.years_continuously_insured']) {
+    // != null: same falsy-zero fix applied elsewhere tonight (0 years
+    // continuously insured is a real, valid answer, not "not provided").
+    if (params['current_insurance.years_continuously_insured'] != null) {
       const opts = await page.locator('label:has-text("How long have you been with your current insurer") ~ select').first().evaluate((el) => Array.from(el.options).map((o) => o.value)).catch(() => []);
       if (opts.length > 1) await page.locator('label:has-text("How long have you been with your current insurer") ~ select').first().selectOption(opts[1]).catch(() => {});
     }

@@ -14,6 +14,32 @@ const readline = require('readline');
 const vault = require('../../vault/lib');
 const logger = require('./logger');
 
+// Loaded once at require time — same files the orchestrator sends to n8n
+// for planning/comparison, read locally here since the worker is a local
+// process with its own filesystem access (same reasoning n8n/README.md
+// gives for why the orchestrator, not n8n, reads these off disk).
+const SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'schema', 'intake_schema.json'), 'utf8'));
+const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, '..', '..', 'brain', 'system_prompt.md'), 'utf8');
+const TOOLS_SCHEMA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'brain', 'tools_schema.json'), 'utf8'));
+
+function flatSchemaFieldPaths() {
+  const paths = [];
+  for (const [group, g] of Object.entries(SCHEMA.groups)) {
+    for (const f of g.fields || []) {
+      paths.push(`${group}.${f.name}`);
+    }
+  }
+  return paths;
+}
+
+function fieldSensitivity(fieldPath) {
+  const [group, field] = fieldPath.split('.');
+  const g = SCHEMA.groups[group];
+  if (!g) return null;
+  const f = g.fields.find((x) => x.name === field);
+  return f ? f.sensitivity : null;
+}
+
 const STATUS = Object.freeze({
   QUOTED_COMPARABLE: 'quoted_comparable',
   QUOTED_NON_COMPARABLE: 'quoted_non_comparable',
@@ -252,7 +278,19 @@ async function dispatchKeyupDefensively(page, selector) {
  * in :visible.
  */
 function scopeToVisible(selector) {
-  return selector.trim().endsWith(':visible') ? selector : `${selector}:visible`;
+  const trimmed = selector.trim();
+  if (trimmed.endsWith(':visible')) return trimmed;
+  // Confirmed live: Playwright's `>> nth=N` chains an index onto the prior
+  // selector segment (used throughout this recipe for date-group fields —
+  // one label, several selects, addressed by position). Appending :visible
+  // to the very end produces `...>> nth=0:visible`, which is invalid syntax
+  // and matches nothing — :visible has to attach to the element clause
+  // *before* the >> nth=N chain, not after it.
+  const chainSplit = trimmed.lastIndexOf(' >> ');
+  if (chainSplit !== -1 && /^nth=\d+$/.test(trimmed.slice(chainSplit + 4).trim())) {
+    return `${trimmed.slice(0, chainSplit)}:visible${trimmed.slice(chainSplit)}`;
+  }
+  return `${trimmed}:visible`;
 }
 
 async function fillFromVault(page, selector, vaultFieldPath, vaultPassphrase) {
@@ -446,6 +484,150 @@ function pauseForHuman(message, { timeoutMs = 10 * 60 * 1000 } = {}) {
   });
 }
 
+// Same three patterns the n8n workflow's own input guardrail checks —
+// duplicated here deliberately (defense in depth, not trust-the-network):
+// even if n8n's check were ever bypassed, disabled, or out of sync, this
+// worker-local check still stands between a live page and the outbound
+// request that leaves this machine.
+const RESOLVE_FIELDS_SUSPECT_PATTERNS = [
+  /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, // email
+  /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/, // phone number
+  /\b[A-Za-z][0-9][A-Za-z]\s?[0-9][A-Za-z][0-9]\b/, // Canadian postal code
+  /\d{9,}/, // long digit run — SIN/card/licence-shaped
+];
+
+const VALID_RESOLVE_STRATEGIES = new Set([
+  'use_mapped_field_value',
+  'use_today_date',
+  'use_zero',
+  'use_inferred_value',
+  'pause_and_ask',
+  'skip_and_disclose',
+  'unresolved',
+]);
+
+/**
+ * Mid-route consultation: the recipe hit a page question its static mapping
+ * doesn't recognize (a changed field, a new validation rule, a format
+ * mismatch, or a genuinely new question) and wants to know what to do.
+ * `questions` must be plain structural facts only — label text, field type,
+ * the site's own option list, visible validation error text, whether the
+ * recipe could tell it's mandatory — built from the page's own labels/DOM,
+ * never from an input's .value. `profileContext` is the same planning_safe
+ * params the recipe already has (not new exposure — it's what this route
+ * was already planned with), passed along so use_inferred_value has real
+ * facts to reason from instead of guessing. This function never reads the
+ * vault and never receives a vaultPassphrase; it structurally cannot leak a
+ * vault_only value, regardless of what a recipe passes in, because it has
+ * no path to one.
+ *
+ * Guardrails, both directions, both re-checked here even though n8n's own
+ * workflow (n8n/ontario_quote_agent.workflow.json) already applies the same
+ * checks — this is defense in depth, not a substitute for the network-side
+ * checks:
+ *   INPUT: the outbound payload (questions + profileContext) is scanned for
+ *     value-shaped patterns (email/phone/postal code/long digit run) before
+ *     it's ever sent: if any hit, nothing goes out and every question
+ *     resolves to 'unresolved' locally.
+ *   OUTPUT: every returned field_mapping is re-validated against the real
+ *     schema field list, every strategy against the fixed keyword set, and
+ *     every inferred_value against that specific question's own disclosed
+ *     options — Claude cannot introduce a value the worker didn't already
+ *     disclose as one of the site's own choices. Anything that doesn't
+ *     match is discarded and forced to 'unresolved' rather than trusted.
+ *
+ * Returns one resolution per question: { question_id, field_mapping,
+ * strategy, inferred_value, reason }. inferred_value is only ever one of
+ * that question's own options, never invented text. Acting on
+ * 'use_mapped_field_value' is still the recipe's job, reading the real
+ * value itself (vault or params) exactly as it already does everywhere
+ * else — this function never does that lookup itself.
+ */
+async function resolveFieldsWithBrain(questions, { n8nBaseUrl, routeId, runId, profileContext = {} }) {
+  const unresolvedFallback = (reason) => questions.map((q) => ({
+    question_id: q.question_id,
+    field_mapping: null,
+    strategy: 'unresolved',
+    inferred_value: null,
+    reason,
+  }));
+
+  if (!n8nBaseUrl) {
+    logger.log('resolve_fields_no_n8n_url', { routeId });
+    return unresolvedFallback('N8N_BASE_URL was not set on the worker — could not consult the brain.');
+  }
+
+  const flatText = JSON.stringify(questions) + JSON.stringify(profileContext);
+  const tripped = RESOLVE_FIELDS_SUSPECT_PATTERNS.some((p) => p.test(flatText));
+  if (tripped) {
+    logger.log('resolve_fields_blocked_by_worker_guardrail', { routeId, runId });
+    return unresolvedFallback('Blocked locally before being sent anywhere — the payload matched a pattern suggesting a real value rather than page structure.');
+  }
+
+  let data;
+  try {
+    const res = await fetch(`${n8nBaseUrl}/webhook/oqa-resolve-field`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        run_id: runId,
+        system_prompt: SYSTEM_PROMPT,
+        tools: TOOLS_SCHEMA.tools,
+        valid_field_paths: flatSchemaFieldPaths(),
+        questions,
+        profile_context: profileContext,
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    logger.log('resolve_fields_call_failed', { routeId, runId, message: e.message });
+    return unresolvedFallback(`Could not consult the brain: ${e.message}`);
+  }
+
+  if (data.error) {
+    logger.log('resolve_fields_call_failed', { routeId, runId, message: data.error });
+    return unresolvedFallback(`Could not consult the brain: ${data.error}`);
+  }
+  if (data.blocked_by_input_guardrail) {
+    logger.log('resolve_fields_blocked_by_n8n_guardrail', { routeId, runId });
+    return unresolvedFallback('Blocked by the n8n-side input guardrail before reaching Claude.');
+  }
+
+  const validFieldPaths = new Set(flatSchemaFieldPaths());
+  const questionsById = new Map(questions.map((q) => [q.question_id, q]));
+  return (data.resolutions || []).map((r) => {
+    let fieldMapping = r.field_mapping;
+    let strategy = r.strategy;
+    let inferredValue = typeof r.inferred_value === 'string' ? r.inferred_value : null;
+    let reason = typeof r.reason === 'string' ? r.reason : '';
+
+    if (fieldMapping != null && !validFieldPaths.has(fieldMapping)) {
+      reason = `(output guardrail discarded an invalid field_mapping) ${reason}`;
+      fieldMapping = null;
+      strategy = 'unresolved';
+    }
+    if (!VALID_RESOLVE_STRATEGIES.has(strategy)) {
+      reason = `(output guardrail discarded an invalid strategy) ${reason}`;
+      strategy = 'unresolved';
+    }
+    if (strategy === 'use_mapped_field_value' && !fieldMapping) {
+      strategy = 'unresolved';
+    }
+    if (strategy === 'use_inferred_value') {
+      const question = questionsById.get(r.question_id);
+      const allowedOptions = new Set(Array.isArray(question && question.options) ? question.options : []);
+      if (!inferredValue || !allowedOptions.has(inferredValue)) {
+        reason = `(output guardrail discarded an inferred_value not present in this question's own options) ${reason}`;
+        inferredValue = null;
+        strategy = 'unresolved';
+      }
+    } else {
+      inferredValue = null;
+    }
+    return { question_id: r.question_id, field_mapping: fieldMapping, strategy, inferred_value: inferredValue, reason };
+  });
+}
+
 module.exports = {
   STATUS,
   HumanCheckpoint,
@@ -462,6 +644,8 @@ module.exports = {
   checkPlanning,
   fillSensitive,
   selectSensitive,
+  resolveFieldsWithBrain,
+  fieldSensitivity,
   readVaultValue: resolveVaultValue,
   parseEvents,
   filterEventsWithinYears,

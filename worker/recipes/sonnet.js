@@ -122,10 +122,15 @@ module.exports = {
     if (params['ownership.new_or_used']) {
       await page.locator('label:has-text("Purchase condition") ~ select').first().selectOption({ label: params['ownership.new_or_used'] }).catch(() => {});
     }
-    if (params['use.annual_kilometres']) {
+    // != null (not a plain truthy check) — confirmed live on rates_ca.js
+    // that a real 0 here (e.g. no commute) was being treated as "not
+    // provided" and silently skipped, even though these are required
+    // answers. Same fix applied here proactively, not yet confirmed live
+    // on Sonnet specifically.
+    if (params['use.annual_kilometres'] != null) {
       await page.locator('label:has-text("Annual distance") ~ select').first().selectOption({ label: String(params['use.annual_kilometres']) }).catch(() => {});
     }
-    if (params['use.one_way_commute_distance']) {
+    if (params['use.one_way_commute_distance'] != null) {
       await lib.fillPlanning(page, 'input:near(:text("Daily commute"))', String(params['use.one_way_commute_distance']));
     }
     await page.click(params['special_use.rideshare_or_delivery'] ? 'text=Yes >> nth=0' : 'label:has-text("paying passengers") ~ * >> text=No').catch(() => {});

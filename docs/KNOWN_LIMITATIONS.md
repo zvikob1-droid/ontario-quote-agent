@@ -31,13 +31,18 @@ challenge brief's requirement to state gaps rather than imply full coverage.
 
 ## Automation reliability
 
-- **Written, but not yet live-tested end to end.** All 5 MVP recipes are now built from a mix of
-  direct live DOM verification (Rates.ca, Onlia's step 1) and screenshots — either from a
-  discovery-only pass with placeholder data (Sonnet, TD Insurance, Staebler) or from my own real
-  walkthrough of the full flow (Onlia's steps 2-5). None has actually been run through the real
-  worker against a live site with my real vault data yet — that's the next step, and I'd
-  genuinely expect some selectors to need a fix the first time they hit the real DOM rather than a
-  screenshot of it.
+- **Live-tested for 2 of 5 MVP routes; 3 remain screenshot-verified only.** `local_independent_broker`
+  and `rates_ca` have both been run end to end through the real worker against the live site with
+  real vault data. That process surfaced and fixed several real bugs a screenshot alone couldn't
+  have caught: duplicate form markup across responsive breakpoints causing the worker to interact
+  with a hidden element instead of the visible one, a submit button gated on a real `keyup` event
+  that Playwright's `.fill()` never fires, a vault-only value (a postal code) that leaked into an
+  error message before a site interaction was properly sanitized, and a vehicle-trim dropdown whose
+  live option list didn't exactly match the requested model string. All are fixed in
+  `worker/lib/recipe_lib.js` (centrally, so every recipe benefits) and `worker/recipes/rates_ca.js`.
+  Onlia, Sonnet, and TD Insurance are still only screenshot/discovery-verified, not yet run against
+  their live sites with real data — I'd genuinely expect at least one of the same classes of bug to
+  show up there too.
 - **Onlia's field windows differ from every other MVP site's, in two ways at once.** Like TD, it
   asks about accidents/claims over 10 years, not the 6-year OAF 1 baseline. Unlike any other MVP
   site, it also asks about prior insurance cancellations over 5 years, not the 3-year baseline —
@@ -51,7 +56,42 @@ challenge brief's requirement to state gaps rather than imply full coverage.
   its flow, the recipe stops at the point it no longer recognizes rather than guessing — it
   reports `blocked` or `unresolved`, not a fabricated result. Recipes are not self-healing; they
   need to be re-verified periodically, and the brief's bounded-attempt policy (one retry for a
-  transient error, no retry past a rejection/CAPTCHA/terms restriction) is followed.
+  transient error, no retry past a rejection/CAPTCHA/terms restriction) is followed. Confirmed live
+  on Rates.ca: a field the recipe expected (a winter tires discount question) was simply no longer
+  present on the page — the recipe was looking for it purely because the code said to, not because
+  it observed the page in any way. Selecting `label:has-text(...)` text over a raw internal id
+  (already the pattern in `sonnet.js`/`td_insurance.js`/`onlia.js`; `rates_ca.js` was converted to
+  match) helps with id churn specifically, but not with a question disappearing outright.
+  - **Built this cycle, proven on one recipe: Claude-assisted live field resolution.** Rather than
+    leave the above as a stated-but-unbuilt idea, it's now real: `resolve_fields`
+    (`brain/tools_schema.json`), the `oqa-resolve-field` n8n webhook, and
+    `worker/lib/recipe_lib.js#resolveFieldsWithBrain` let a recipe consult the brain mid-route when
+    its static mapping doesn't recognize a question — sending only that question's own
+    label/type/options/error text (never a value; the function has no vault access at all) and
+    getting back a schema field name or a fixed strategy keyword (never a literal answer) to act
+    on itself. Full design and guardrail detail in `docs/ARCHITECTURE.md` §7.5.
+
+    The strategy set also distinguishes *administrative* questions (a date needing to fall in a
+    valid range) from *disclosure* questions (driving/claims/conviction/insurance history) —
+    the former can get a sensible computed default (`use_today_date`/`use_zero`); the latter never
+    get defaulted in either direction, favorable or not, since an unevidenced guess on a disclosure
+    question is a potential misrepresentation on an insurance application, not a helpful shortcut.
+    A disclosure question either gets answered from real already-known facts (`use_inferred_value`
+    — and only by picking one of that question's own disclosed options, never inventing text) or is handed to me directly (`pause_and_ask`, the same
+    `lib.pauseForHuman()` mechanism already used for consent/CAPTCHA checkpoints) if it's mandatory
+    and unanswerable from what's already known.
+
+    **Scope actually covered:** the core mechanism (`use_mapped_field_value`, `use_today_date`,
+    `skip_and_disclose`, `unresolved`) is wired into one real, judgment-requiring case —
+    `rates_ca.js`'s vehicle purchase-date validation. `use_inferred_value` and `pause_and_ask` are
+    fully built with the same guardrails and unit-tested directly (including a rejected-hallucinated-
+    option case), but haven't yet been exercised by an actual live recipe call site — no run tonight
+    has hit a genuinely new, unmapped disclosure-type question to trigger one for real. **Not done:**
+    the other four recipes don't call any of this yet, and `rates_ca.js`'s own
+    winter-tires-question-removed case stays plain local logic rather than a brain consultation
+    (there's no ambiguity to resolve there — the field either exists or doesn't). Extending this to
+    the other recipes, and to a more general "sweep whatever the static pass didn't handle" pattern
+    rather than a few hand-picked call sites, is the honest remaining next step.
 - **CAPTCHA / bot-detection.** A site that presents a CAPTCHA pauses the recipe (`lib.pauseForHuman()`)
   and hands off to me to solve it myself in the browser window — see `docs/ARCHITECTURE.md` §5.
   The recipe never solves or automates past one. A hard bot-detection wall with no human-solvable

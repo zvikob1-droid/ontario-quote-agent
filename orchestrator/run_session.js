@@ -349,9 +349,18 @@ async function main() {
   const passphrase = await promptPassphrase('Vault passphrase (kept in memory only): ');
   const baseline = planningSafeBaseline(passphrase, schema);
 
+  // benchmark_coverage was previously only used for the compare step and
+  // the .md report — never included in what's sent to the plan step, so
+  // Claude had no way to know requested coverage (liability limit,
+  // deductibles, effective date, etc.) existed at all and never included
+  // coverage_configuration.* in any route's params. Confirmed live: this
+  // silently left every route's comprehensive/collision coverage answered
+  // as "No" (falsy default) regardless of the real benchmark. Order: vault
+  // baseline, then the shared benchmark, then this profile's own overrides
+  // (most specific wins).
   const profiles = profilesConfig.profiles.map((p) => ({
     label: p.label,
-    fields: { ...baseline, ...(p.overrides || {}) },
+    fields: { ...baseline, ...(profilesConfig.benchmark_coverage || {}), ...(p.overrides || {}) },
   }));
 
   const sessionElapsed = logger.timer();

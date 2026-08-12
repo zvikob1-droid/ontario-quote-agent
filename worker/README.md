@@ -38,6 +38,12 @@ Other env vars, all optional: `OQA_WORKER_PORT` (default 8787),
 longer than a human pause), `OQA_ACTION_TIMEOUT_MS` (default 20s, per
 fill/click), `OQA_NAV_TIMEOUT_MS` (default 30s, per page navigation).
 
+`N8N_BASE_URL` — same value the orchestrator uses. Optional, but without it a
+recipe that hits a page question its static mapping doesn't recognize can't
+consult the brain mid-route (see "Mid-route field resolution" below) — it
+just fails soft to `unresolved` for that question instead. Set it the same
+way: `N8N_BASE_URL=https://my-n8n-host.example.com node server.js`.
+
 ## Human-in-the-loop
 
 Some checkpoints (a CAPTCHA, or a final review-before-submit) pause the
@@ -83,6 +89,21 @@ only ever returns redacted results, regardless of how it's reached — see
 `schema/intake_schema.json`'s `planning_safe` tag for exactly what's allowed
 to cross that boundary.
 
+## Mid-route field resolution
+
+A recipe is a fixed script — it only handles what it was written to expect,
+and a real site changes over time. Rather than only failing at the point a
+question no longer matches, a recipe can call
+`lib.resolveFieldsWithBrain(questions, { n8nBaseUrl, routeId, runId })` to
+ask the brain what to do — sending only that question's own label/type/
+option-list/error text (never a value; the function takes no vault access at
+all) and getting back a schema field name or a fixed strategy keyword to act
+on itself. See `docs/ARCHITECTURE.md` §7.5 for the full design and its input/
+output guardrails, and `worker/recipes/rates_ca.js`'s vehicle-purchase-date
+handling for the one place this is actually wired in so far — extending it
+to the rest of that recipe and the other four is real, not yet done, per
+`docs/KNOWN_LIMITATIONS.md`.
+
 ## Recipes are stubs — finish them with Playwright codegen
 
 Each file in `recipes/` has its site's real entry point confirmed (I checked
@@ -108,6 +129,8 @@ and insert a `throw new lib.HumanCheckpoint(...)` right before any
 identity/consent/declaration/payment step — never letting codegen's recording
 carry me past one of those on a real run.
 
-See `recipes/_template.js` for the full contract and
-`docs/KNOWN_LIMITATIONS.md` for why recipes are intentionally brittle rather
-than "smart."
+See `recipes/_template.js` for the full contract, "Mid-route field
+resolution" above for how a recipe can adapt when its static mapping doesn't
+match a live page, and `docs/KNOWN_LIMITATIONS.md` for how much of that
+adaptiveness is actually built and proven so far versus still a manual
+re-verification job.

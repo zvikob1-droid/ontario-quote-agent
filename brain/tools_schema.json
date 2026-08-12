@@ -111,6 +111,43 @@
       }
     },
     {
+      "name": "resolve_fields",
+      "description": "Mid-route field resolution: the worker hit a page question it couldn't handle with its static mapping (an unrecognized field, a changed validation rule, a format mismatch, or a genuinely new question) and is asking which schema field it corresponds to and what to do. Input is structural only — question label text, field type, the site's own option list, any visible validation error text, whether the worker could tell the question is mandatory — plus profile_context: the same planning_safe facts already sent for this route during planning. Never a value, sensitive or otherwise, from either input. This tool's output must never contain a value the worker didn't already disclose either: every action must name a field for the worker to look up itself, a fixed strategy keyword, or (use_inferred_value only) one of that question's own already-disclosed options — never a literal answer invented from nothing.",
+      "input_schema": {
+        "type": "object",
+        "required": ["resolutions"],
+        "properties": {
+          "resolutions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["question_id", "field_mapping", "strategy", "reason"],
+              "properties": {
+                "question_id": { "type": "string", "description": "Echoes the worker-supplied id for this question — just a correlation key, not a value." },
+                "field_mapping": {
+                  "type": ["string", "null"],
+                  "description": "The exact schema/intake_schema.json 'group.field' path this question corresponds to (e.g. 'risk_details.winter_tires'), or null if nothing fits. Must be a real field path — never invent one that isn't in the schema the worker will validate against."
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": ["use_mapped_field_value", "use_today_date", "use_zero", "use_inferred_value", "pause_and_ask", "skip_and_disclose", "unresolved"],
+                  "description": "'use_mapped_field_value': the worker looks up field_mapping itself (vault or params) and types that in — you never see or supply the value. 'use_today_date'/'use_zero': the worker computes that literal itself; use for an administrative constraint no vault/schema field represents (e.g. a date within N days) — never for a question about the applicant's actual history. 'use_inferred_value': the question is genuinely answerable from profile_context alone (e.g. 'insured before?' when current_insurance.first_insured_year is present) — set inferred_value to the exact matching option from that question's own options list, never invented text. 'pause_and_ask': a mandatory question about the applicant's actual driving/claims/insurance history that profile_context doesn't answer — hand off to the human rather than guessing, favorable or not. 'skip_and_disclose': the question is optional and unanswerable — leave it blank and report why. 'unresolved': not confident enough to decide — treated the same as skip_and_disclose."
+                },
+                "inferred_value": {
+                  "type": "string",
+                  "description": "Required only when strategy is use_inferred_value. Must exactly match one entry in that question's own options list as supplied by the worker — never free text, never a value that wasn't already disclosed."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "One short, plain sentence for the run summary — why this mapping/strategy, or why it's unresolved/paused. Never repeats any value beyond a chosen inferred_value's own text; describe the situation and, for use_inferred_value, the fact it was inferred from (e.g. 'inferred Yes — current_insurance.first_insured_year is on file, so the applicant has been insured before')."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "name": "flag_new_field",
       "description": "Raise an anomaly: input contained something that looks sensitive or unrecognized rather than a clean planning_safe field. Never process the suspected value — only describe what was observed.",
       "input_schema": {

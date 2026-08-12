@@ -23,7 +23,7 @@ the instant it takes to type it into a form field.
 | **Vault** | Local machine only | Stores it (encrypted at rest) | Holds licence #, DOB, VIN, address, driving/claims history. Decrypts a field only in-process, on request from the local worker. |
 | **Worker** | Local machine only | Yes, transiently, in-process | Runs Playwright recipes per channel. Reads a field from the vault right before typing it into a form, then discards it — never logs, returns, or persists the raw value. Returns only redacted results (status, premium, coverage, masked evidence) to n8n. |
 | **n8n** | Self-hosted cloud VM | No | Orchestrates the run: asks Claude for a route plan, sends job requests (non-sensitive params only — vehicle year/make/model, coverage config, which channel) to the local worker, collects redacted results, asks Claude to normalize/compare them, produces the output. |
-| **Claude ("the brain")** | Anthropic API, called from n8n | No | Plans which channels to attempt for a given non-sensitive profile shape, maps form questions to the canonical schema, normalizes redacted quote results into the comparison ledger, writes the human-readable summary. Never receives a sensitive field, even encrypted. |
+| **Claude ("the brain")** | Anthropic API, called from n8n | No | Plans which channels to attempt for a given non-sensitive profile shape, normalizes redacted quote results into the comparison ledger, writes the human-readable summary. Mid-route, also resolves a page question a recipe's static mapping doesn't recognize — see §7.5 — seeing only that question's own label/type/options/error text, never a value. Never receives a sensitive field, even encrypted, in any of these calls. |
 
 The consequence: even if n8n's execution history or Claude's conversation were fully exposed, no
 licence number, DOB, VIN, address, or driving/claims history would be in it. The blast radius of a
@@ -48,7 +48,10 @@ Toronto-area postal prefix, $2M liability requested") that are needed to route a
 5. **Form fill (local worker only).** The worker's Playwright recipe for that channel runs
    locally, pulls each sensitive field from the vault at the moment it's needed, types it, and
    proceeds. Before any identity lookup, consent attestation, signature, payment, or purchase
-   step, the recipe stops (see §5, Human checkpoints).
+   step, the recipe stops (see §5, Human checkpoints). If a page question doesn't match the
+   recipe's static mapping (a site changed, added, or reworded something), the worker can consult
+   the brain mid-route — see §7.5 — but the worker still does every actual lookup and keystroke
+   itself; the brain only ever returns a field name or a fixed strategy keyword, never a value.
 6. **Evidence capture.** The worker saves a timestamped, redacted evidence artifact (screenshot
    with sensitive fields masked, or a structured note) plus the outcome status.
 7. **Redacted result (local worker → n8n).** Only the outcome status, premium, coverage terms,
@@ -115,15 +118,72 @@ site's flow yet to hit one — see `docs/KNOWN_LIMITATIONS.md`.
 
 - Sensitive fields: encrypted at rest in the local vault only. Never written to n8n, Claude
   prompts/traces, this repository, or any submitted artifact.
-- Evidence artifacts (screenshots, call notes): redacted before being saved to `worker/evidence/`,
-  which is git-ignored and excluded from anything submitted.
+- Evidence artifacts (screenshots, call notes): redacted before being saved to `worker/evidence/`.
+  Any pre-redaction capture would live under `worker/evidence/raw/`, which is git-ignored and never
+  committed. The redacted, post-mask artifacts under `worker/evidence/<route>/<run>/` are the
+  submittable proof of a live run and are committed after a manual review confirms no sensitive
+  value is visible.
 - Access logs and consent receipts are kept separate from the quote display data.
 - One-click delete: `vault/cli.js delete-all` wipes the local encrypted store. All hackathon quote
   data is deleted after judging unless I choose otherwise.
 
 ## 7. What Claude (the brain) is and isn't allowed to do
 
-Claude plans routes, maps intake fields by name, normalizes redacted results, and writes
-human-readable comparisons. Claude is never the thing that types a sensitive value into a form,
-never sees a raw sensitive value, and never makes a purchase, binds a policy, or submits payment —
-those actions are out of scope for the whole system, not just for Claude.
+Claude plans routes, normalizes redacted results, writes human-readable comparisons, and (§7.5)
+helps resolve an unrecognized page question mid-route. Claude is never the thing that types a
+sensitive value into a form, never sees a raw sensitive value, and never makes a purchase, binds a
+policy, or submits payment — those actions are out of scope for the whole system, not just for
+Claude.
+
+### 7.5 Mid-route field resolution — why it doesn't cross the trust boundary
+
+Every recipe is a fixed, hand-written script — it has no ability to adapt when a site doesn't match
+what it expects. Confirmed live, repeatedly, in one evening's testing: a form field duplicated
+across responsive breakpoints, a submit button gated on an event a library method doesn't fire, a
+question quietly removed from a page, a validation rule (a date must be within 60 days) that a real
+stored value doesn't satisfy. Every one of those had to be individually discovered through a real
+failure and hand-fixed — there was no way for the system itself to notice something was off and
+reason about a response, because the one component capable of that reasoning (Claude) was
+structurally excluded from every moment during route execution.
+
+`resolve_fields` (`brain/tools_schema.json`, `n8n/ontario_quote_agent.workflow.json`'s
+`oqa-resolve-field` webhook, `worker/lib/recipe_lib.js#resolveFieldsWithBrain`) closes that gap
+without moving the trust boundary, via a strict separation between *structure* and *values*:
+
+- **What the worker sends:** a question's own label text, its field type, the *site's own*
+  predefined option list (e.g. `["Yes", "No"]` — the site's wording, not the applicant's answer),
+  and any visible validation error text. All of this is the site's own static content, in the same
+  `planning_safe` category as the market registry or a coverage-configuration field — never
+  something the applicant typed or the vault holds.
+- **What the worker never sends:** any field's current *value*. Not vault_only data, not even
+  already-filled `planning_safe` data. The function has no `vaultPassphrase` parameter at all — it
+  cannot leak a vault value even by accident, because it has no code path to one.
+- **What Claude returns:** for each question, either a `field_mapping` (an exact
+  `schema/intake_schema.json` path the worker should look up itself) or one of a fixed set of
+  strategy keywords — never a literal value it invented. In priority order: `use_mapped_field_value`
+  (the clean case — a known field asked differently), `use_inferred_value` (the question is
+  genuinely answerable from `profile_context`, the same `planning_safe` facts already sent for this
+  route during planning — not new exposure, just available again here; Claude may only pick one of
+  that question's own already-disclosed options, never write new text), `use_today_date`/`use_zero`
+  (an administrative constraint with no vault concept — never used for a question about the
+  applicant's actual history), `pause_and_ask` (a *mandatory* driving/claims/conviction/insurance
+  history question `profile_context` doesn't answer — handed to the human rather than defaulted to
+  whichever answer looks better, favorable or not), `skip_and_disclose`/`unresolved` (an honest
+  gap). The worker does every actual lookup and every keystroke, exactly as it already does
+  everywhere else — even for `use_inferred_value`, Claude only ever names one of the options the
+  worker already disclosed as the site's own wording, never something it introduced itself.
+- **Guardrails, both directions, checked twice each** (once in the n8n workflow, once again in the
+  worker itself — defense in depth, not trust-the-network):
+  - *Input:* the outbound payload (questions and `profile_context` alike) is scanned for
+    value-shaped patterns (email, phone number, Canadian postal code, a long digit run) before it
+    ever leaves the process it's being built in. A match blocks the call entirely and resolves
+    every question to `unresolved` locally — nothing suspect reaches n8n, let alone Claude.
+  - *Output:* every `field_mapping` Claude returns is re-validated against the real schema field
+    list, every `strategy` against the fixed keyword set, and every `inferred_value` against that
+    specific question's own disclosed options. Anything that doesn't match exactly is discarded and
+    forced to `unresolved` rather than acted on.
+
+This mechanism is built and proven on `rates_ca.js` (the vehicle purchase-date validation case, via
+`use_today_date`); `use_inferred_value` and `pause_and_ask` are built and guardrail-tested but not
+yet exercised by a live recipe call site, and extending any of this to the other four recipes is
+the natural next step, not yet done — see `docs/KNOWN_LIMITATIONS.md`.

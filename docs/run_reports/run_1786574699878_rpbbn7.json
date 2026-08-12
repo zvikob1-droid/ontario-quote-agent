@@ -1,0 +1,153 @@
+{
+  "run_id": "run_1786574699878_rpbbn7",
+  "generated_at": "2026-08-12T22:45:21.723Z",
+  "profiles": [
+    {
+      "label": "My vehicle — 2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "My vehicle — 2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in market_registry.json with an actual entry (status active_mvp, quote_url present). Product scope standard_PPA fits a daily-driver 2025 Civic profile.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Only one route in registry/market_registry.json actually qualifies as a plannable route: rates_ca (status active_mvp, has a quote_url, distinct_rate_source_id). The 31 entries under underwriting_groups_seed (AIG, Allstate, Aviva, Intact/belairdirect, TD, Wawanesa, etc.) are NOT registry routes — they have no registry_id, quote_url, product_scope, or status field. They're background reference data for validating future routes, not something I can attempt this run. So this run is a single-route attempt (rates_ca) against a broad panel — it is not a full market sweep, and I'm not substituting anything else in place of the many unbuilt broker/direct routes. If you want direct quotes from e.g. belairdirect, TD, Intact, Aviva, etc., those need real registry entries (quote_url + verified status) added before I can plan them — right now doing so would mean guessing at URLs/automation paths that haven't been verified, which I won't do.\n\nNo sensitive-looking values seen in this profile — licensing timeline years, purchase price, FSA-level vehicle/use fields all read as the kind of planning_safe data the schema describes. Nothing flagged."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.selectOption: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('label:has-text(\"Vehicle purchase date\") ~ * select').nth(0:visible)\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-12T22:45:21.726Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/95c90dbc-544f-49ca-88d1-6ec1d6f3178e/1786574769527_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "My vehicle — 2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "Only result returned this run — no other route to compare against, no duplication possible.",
+            "outcome": {
+              "failure_reason": "recipe_incomplete_or_site_change",
+              "detail": "Automation timed out (20s) waiting for a visible 'Vehicle purchase date' dropdown to become selectable. The route never progressed past this step, so no quote was obtained. This is an implementation/recipe gap, not a market finding — Rates.ca was not actually queried for a rate."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "Route failed before any coverage details (liability limit, DCPD, deductible, endorsements) could be confirmed or contradicted — nothing about coverage was disclosed."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-12T22:45:21.726Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/95c90dbc-544f-49ca-88d1-6ec1d6f3178e/1786574769527_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "Rates.ca didn't return a quote this run. The automation got stuck on the 'Vehicle purchase date' dropdown — it waited 20 seconds for a selectable option and never found one, so the form never advanced. That means Rates.ca wasn't actually queried for a rate on your 2025 Civic; this is a script/recipe issue on our end (likely the site changed this question or added a new option set), not a market signal that they don't offer coverage or that pricing was bad. No premium, no coverage confirmation (liability limit, deductible, endorsements), and no discount info came back — all fields are honestly blank rather than assumed. There's a screenshot saved as evidence of exactly where it stopped, which should help fix the recipe. Nothing to compare yet since this is the only result in this batch — worth re-running once the dropdown handling is patched, and worth checking whether any other routes were part of this plan that didn't get reported here.",
+        "gaps": [
+          "Rates.ca produced no quote this run due to a timeout on the 'Vehicle purchase date' dropdown — needs a recipe fix (the selector/options for that question likely changed on the live site).",
+          "Zero comparable quotes obtained so far in this batch — no basis yet for any price or coverage comparison.",
+          "Discount disclosure (e.g. winter tires) unknown for Rates.ca — the route never reached that step.",
+          "Deductible and endorsement (OPCF44R) match against benchmark unknown for Rates.ca — never disclosed before failure.",
+          "Only one result was included in this comparison call; if other routes were planned for this run, their outcomes aren't reflected here."
+        ]
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 8390,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2122,
+          "output_tokens_details": {
+            "thinking_tokens": 978
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:My vehicle — 2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 5812,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2300,
+          "output_tokens_details": {
+            "thinking_tokens": 1026
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 18624
+  }
+}

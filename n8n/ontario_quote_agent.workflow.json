@@ -1,5 +1,5 @@
 {
-  "name": "Ontario Quote Agent — Brain",
+  "name": "Ontario Quote Agent \u2014 Brain",
   "nodes": [
     {
       "id": "plan-trigger",
@@ -29,12 +29,12 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "// Input body is sent by the local orchestrator script (see orchestrator/run_session.js),\n// which reads brain/system_prompt.md, brain/tools_schema.json and\n// registry/market_registry.json off disk so this workflow never needs\n// filesystem access on the n8n host. Nothing in this body is sensitive —\n// see schema/intake_schema.json's planning_safe tag.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.profiles || !Array.isArray(body.profiles) || body.profiles.length === 0) {\n  throw new Error('Request body is missing a non-empty \"profiles\" array.');\n}\nif (!body.system_prompt || !body.registry) {\n  throw new Error('Request body is missing \"system_prompt\" or \"registry\".');\n}\n\nconst runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n\nconst allTools = body.tools || [];\nconst planTools = allTools.filter((t) => ['submit_route_plan', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n  task: 'plan_routes',\n  registry: body.registry,\n  profiles: body.profiles,\n}, null, 2);\n\nreturn [{\n  json: {\n    run_id: runId,\n    profiles: body.profiles,\n    claude_request: {\n      model: body.model || 'claude-sonnet-5',\n      max_tokens: 8192,\n      system: body.system_prompt,\n      tools: planTools,\n      tool_choice: { type: 'auto' },\n      messages: [\n        { role: 'user', content: userContent },\n      ],\n    },\n  },\n}];\n"
+        "jsCode": "// Input body is sent by the local orchestrator script (see orchestrator/run_session.js),\n// which reads brain/system_prompt.md, brain/tools_schema.json and\n// registry/market_registry.json off disk so this workflow never needs\n// filesystem access on the n8n host. Nothing in this body is sensitive - \n// see schema/intake_schema.json's planning_safe tag.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.profiles || !Array.isArray(body.profiles) || body.profiles.length === 0) {\n throw new Error('Request body is missing a non-empty \"profiles\" array.');\n}\nif (!body.system_prompt || !body.registry) {\n throw new Error('Request body is missing \"system_prompt\" or \"registry\".');\n}\n\nconst runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n\nconst allTools = body.tools || [];\nconst planTools = allTools.filter((t) => ['submit_route_plan', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n task: 'plan_routes',\n registry: body.registry,\n profiles: body.profiles,\n}, null, 2);\n\nreturn [{\n json: {\n  run_id: runId,\n  profiles: body.profiles,\n  claude_request: {\n   model: body.model || 'claude-sonnet-5',\n   max_tokens: 8192,\n   system: body.system_prompt,\n   tools: planTools,\n   tool_choice: { type: 'auto' },\n   messages: [\n    { role: 'user', content: userContent },\n   ],\n  },\n },\n}];\n"
       }
     },
     {
       "id": "claude-plan",
-      "name": "Claude — Plan Routes",
+      "name": "Claude \u2014 Plan Routes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -73,7 +73,7 @@
           "name": "Anthropic API Key (x-api-key)"
         }
       },
-      "notes": "continueOnFail so a Claude API failure doesn't kill the whole workflow with no response ever sent back — retrying is left entirely to the orchestrator (orchestrator/run_session.js), which classifies retryable vs non-retryable errors; n8n's own blind retry-on-fail is intentionally not used here — see Parse Route Plan for how the error is turned into a clean {error: ...} reply instead of a raw n8n 500."
+      "notes": "continueOnFail so a Claude API failure doesn't kill the whole workflow with no response ever sent back \u2014 retrying is left entirely to the orchestrator (orchestrator/run_session.js), which classifies retryable vs non-retryable errors; n8n's own blind retry-on-fail is intentionally not used here \u2014 see Parse Route Plan for how the error is turned into a clean {error: ...} reply instead of a raw n8n 500."
     },
     {
       "id": "parse-plan",
@@ -86,7 +86,7 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "function extractApiError(resp) {\n  // n8n's continueOnFail error shape isn't fully consistent across versions,\n  // so try a few plausible spots rather than assuming one. Goal: get enough\n  // (an HTTP-ish status and/or Anthropic's own error.type) for the caller to\n  // tell 'worth retrying' (rate limit, overloaded, 5xx) apart from 'will never\n  // work' (bad API key, malformed request) rather than treating every failure\n  // the same.\n  let status = resp.statusCode || resp.httpCode\n    || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n  let apiErrorType = null;\n  let message = null;\n  const rawError = resp.error;\n  if (typeof rawError === 'string') {\n    message = rawError;\n  } else if (rawError && typeof rawError === 'object') {\n    message = rawError.message || rawError.description || JSON.stringify(rawError);\n    if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n  }\n  if (resp.type === 'error' && resp.error && resp.error.type) {\n    apiErrorType = resp.error.type;\n    message = resp.error.message || message;\n  }\n  return { message: message || 'Unknown error', status, apiErrorType };\n}\n\n// Pull run_id/profiles from the sibling branch's output via the input item\n// that carries it (n8n keeps items aligned by index through this linear chain).\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Plan)').first().json;\n\n// continueOnFail (set on the Claude — Plan Routes node) puts an error here\n// instead of throwing and killing the workflow. Anthropic API errors can also\n// come back as a 200 with {type: 'error', ...} in some failure modes — check\n// both, and surface enough (error_status/error_type) for the orchestrator to\n// classify retryable vs non-retryable rather than guessing from a string.\nif (claudeResponse.error || claudeResponse.type === 'error') {\n  const info = extractApiError(claudeResponse);\n  return [{ json: { run_id: upstream.run_id, route_plans: [], flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst routePlans = toolUseBlocks\n  .filter((b) => b.name === 'submit_route_plan')\n  .map((b) => b.input);\nconst flags = toolUseBlocks\n  .filter((b) => b.name === 'flag_new_field')\n  .map((b) => b.input);\n\nif (routePlans.length === 0 && flags.length === 0) {\n  // Claude responded but didn't call either expected tool — plausibly just\n  // model variance on this attempt, worth one more try. error_type is our\n  // own marker, not an Anthropic one; the orchestrator treats it as retryable.\n  return [{ json: { run_id: upstream.run_id, route_plans: [], flags: [], error: `Claude did not call submit_route_plan or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\nreturn [{\n  json: {\n    run_id: upstream.run_id,\n    route_plans: routePlans,\n    flags,\n    raw_stop_reason: claudeResponse.stop_reason,\n    usage: claudeResponse.usage || null,\n  },\n}];\n"
+        "jsCode": "function extractApiError(resp) {\n // n8n's continueOnFail error shape isn't fully consistent across versions,\n // so try a few plausible spots rather than assuming one. Goal: get enough\n // (an HTTP-ish status and/or Anthropic's own error.type) for the caller to\n // tell 'worth retrying' (rate limit, overloaded, 5xx) apart from 'will never\n // work' (bad API key, malformed request) rather than treating every failure\n // the same.\n let status = resp.statusCode || resp.httpCode\n  || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n let apiErrorType = null;\n let message = null;\n const rawError = resp.error;\n if (typeof rawError === 'string') {\n  message = rawError;\n } else if (rawError && typeof rawError === 'object') {\n  message = rawError.message || rawError.description || JSON.stringify(rawError);\n  if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n }\n if (resp.type === 'error' && resp.error && resp.error.type) {\n  apiErrorType = resp.error.type;\n  message = resp.error.message || message;\n }\n return { message: message || 'Unknown error', status, apiErrorType };\n}\n\n// Pull run_id/profiles from the sibling branch's output via the input item\n// that carries it (n8n keeps items aligned by index through this linear chain).\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Plan)').first().json;\n\n// continueOnFail (set on the Claude - Plan Routes node) puts an error here\n// instead of throwing and killing the workflow. Anthropic API errors can also\n// come back as a 200 with {type: 'error', ...} in some failure modes - check\n// both, and surface enough (error_status/error_type) for the orchestrator to\n// classify retryable vs non-retryable rather than guessing from a string.\nif (claudeResponse.error || claudeResponse.type === 'error') {\n const info = extractApiError(claudeResponse);\n return [{ json: { run_id: upstream.run_id, route_plans: [], flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst routePlans = toolUseBlocks\n .filter((b) => b.name === 'submit_route_plan')\n .map((b) => b.input);\nconst flags = toolUseBlocks\n .filter((b) => b.name === 'flag_new_field')\n .map((b) => b.input);\n\nif (routePlans.length === 0 && flags.length === 0) {\n // Claude responded but didn't call either expected tool - plausibly just\n // model variance on this attempt, worth one more try. error_type is our\n // own marker, not an Anthropic one; the orchestrator treats it as retryable.\n return [{ json: { run_id: upstream.run_id, route_plans: [], flags: [], error: `Claude did not call submit_route_plan or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\nreturn [{\n json: {\n  run_id: upstream.run_id,\n  route_plans: routePlans,\n  flags,\n  raw_stop_reason: claudeResponse.stop_reason,\n  usage: claudeResponse.usage || null,\n },\n}];\n"
       }
     },
     {
@@ -131,12 +131,12 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "// Body sent by orchestrator/run_session.js after it collected redacted\n// results from the local worker (worker/server.js) for every planned route.\n// `results` here are already redacted per schema/quote_result_schema.json —\n// no sensitive field has ever entered this pipeline.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.run_id || !body.profile_label || !body.results) {\n  throw new Error('Request body is missing \"run_id\", \"profile_label\", or \"results\".');\n}\n\nconst allTools = body.tools || [];\nconst compareTools = allTools.filter((t) => ['submit_comparison', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n  task: 'normalize_and_compare',\n  run_id: body.run_id,\n  profile_label: body.profile_label,\n  benchmark_coverage: body.benchmark_coverage,\n  results: body.results,\n}, null, 2);\n\nreturn [{\n  json: {\n    run_id: body.run_id,\n    claude_request: {\n      model: body.model || 'claude-sonnet-5',\n      max_tokens: 8192,\n      system: body.system_prompt,\n      tools: compareTools,\n      tool_choice: { type: 'auto' },\n      messages: [\n        { role: 'user', content: userContent },\n      ],\n    },\n  },\n}];\n"
+        "jsCode": "// Body sent by orchestrator/run_session.js after it collected redacted\n// results from the local worker (worker/server.js) for every planned route.\n// `results` here are already redacted per schema/quote_result_schema.json - \n// no sensitive field has ever entered this pipeline.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.run_id || !body.profile_label || !body.results) {\n throw new Error('Request body is missing \"run_id\", \"profile_label\", or \"results\".');\n}\n\nconst allTools = body.tools || [];\nconst compareTools = allTools.filter((t) => ['submit_comparison', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n task: 'normalize_and_compare',\n run_id: body.run_id,\n profile_label: body.profile_label,\n benchmark_coverage: body.benchmark_coverage,\n results: body.results,\n}, null, 2);\n\nreturn [{\n json: {\n  run_id: body.run_id,\n  claude_request: {\n   model: body.model || 'claude-sonnet-5',\n   max_tokens: 8192,\n   system: body.system_prompt,\n   tools: compareTools,\n   tool_choice: { type: 'auto' },\n   messages: [\n    { role: 'user', content: userContent },\n   ],\n  },\n },\n}];\n"
       }
     },
     {
       "id": "claude-compare",
-      "name": "Claude — Compare",
+      "name": "Claude \u2014 Compare",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -175,7 +175,7 @@
           "name": "Anthropic API Key (x-api-key)"
         }
       },
-      "notes": "continueOnFail so a Claude API failure doesn't kill the whole workflow with no response ever sent back — retrying is left entirely to the orchestrator (orchestrator/run_session.js), which classifies retryable vs non-retryable errors; n8n's own blind retry-on-fail is intentionally not used here — see Parse Comparison for how the error is turned into a clean {error: ...} reply instead of a raw n8n 500."
+      "notes": "continueOnFail so a Claude API failure doesn't kill the whole workflow with no response ever sent back \u2014 retrying is left entirely to the orchestrator (orchestrator/run_session.js), which classifies retryable vs non-retryable errors; n8n's own blind retry-on-fail is intentionally not used here \u2014 see Parse Comparison for how the error is turned into a clean {error: ...} reply instead of a raw n8n 500."
     },
     {
       "id": "parse-compare",
@@ -188,7 +188,7 @@
       ],
       "parameters": {
         "language": "javaScript",
-        "jsCode": "function extractApiError(resp) {\n  // n8n's continueOnFail error shape isn't fully consistent across versions,\n  // so try a few plausible spots rather than assuming one. Goal: get enough\n  // (an HTTP-ish status and/or Anthropic's own error.type) for the caller to\n  // tell 'worth retrying' (rate limit, overloaded, 5xx) apart from 'will never\n  // work' (bad API key, malformed request) rather than treating every failure\n  // the same.\n  let status = resp.statusCode || resp.httpCode\n    || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n  let apiErrorType = null;\n  let message = null;\n  const rawError = resp.error;\n  if (typeof rawError === 'string') {\n    message = rawError;\n  } else if (rawError && typeof rawError === 'object') {\n    message = rawError.message || rawError.description || JSON.stringify(rawError);\n    if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n  }\n  if (resp.type === 'error' && resp.error && resp.error.type) {\n    apiErrorType = resp.error.type;\n    message = resp.error.message || message;\n  }\n  return { message: message || 'Unknown error', status, apiErrorType };\n}\n\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Compare)').first().json;\n\nif (claudeResponse.error || claudeResponse.type === 'error') {\n  const info = extractApiError(claudeResponse);\n  return [{ json: { run_id: upstream.run_id, comparison: null, flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst comparison = toolUseBlocks.find((b) => b.name === 'submit_comparison');\nconst flags = toolUseBlocks.filter((b) => b.name === 'flag_new_field').map((b) => b.input);\n\nif (!comparison && flags.length === 0) {\n  return [{ json: { run_id: upstream.run_id, comparison: null, flags: [], error: `Claude did not call submit_comparison or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\nreturn [{\n  json: {\n    run_id: upstream.run_id,\n    comparison: comparison ? comparison.input : null,\n    flags,\n    raw_stop_reason: claudeResponse.stop_reason,\n    usage: claudeResponse.usage || null,\n  },\n}];\n"
+        "jsCode": "function extractApiError(resp) {\n // n8n's continueOnFail error shape isn't fully consistent across versions,\n // so try a few plausible spots rather than assuming one. Goal: get enough\n // (an HTTP-ish status and/or Anthropic's own error.type) for the caller to\n // tell 'worth retrying' (rate limit, overloaded, 5xx) apart from 'will never\n // work' (bad API key, malformed request) rather than treating every failure\n // the same.\n let status = resp.statusCode || resp.httpCode\n  || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n let apiErrorType = null;\n let message = null;\n const rawError = resp.error;\n if (typeof rawError === 'string') {\n  message = rawError;\n } else if (rawError && typeof rawError === 'object') {\n  message = rawError.message || rawError.description || JSON.stringify(rawError);\n  if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n }\n if (resp.type === 'error' && resp.error && resp.error.type) {\n  apiErrorType = resp.error.type;\n  message = resp.error.message || message;\n }\n return { message: message || 'Unknown error', status, apiErrorType };\n}\n\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Compare)').first().json;\n\nif (claudeResponse.error || claudeResponse.type === 'error') {\n const info = extractApiError(claudeResponse);\n return [{ json: { run_id: upstream.run_id, comparison: null, flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst comparison = toolUseBlocks.find((b) => b.name === 'submit_comparison');\nconst flags = toolUseBlocks.filter((b) => b.name === 'flag_new_field').map((b) => b.input);\n\nif (!comparison && flags.length === 0) {\n return [{ json: { run_id: upstream.run_id, comparison: null, flags: [], error: `Claude did not call submit_comparison or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\nreturn [{\n json: {\n  run_id: upstream.run_id,\n  comparison: comparison ? comparison.input : null,\n  flags,\n  raw_stop_reason: claudeResponse.stop_reason,\n  usage: claudeResponse.usage || null,\n },\n}];\n"
       }
     },
     {
@@ -199,6 +199,141 @@
       "position": [
         560,
         200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      }
+    },
+    {
+      "id": "resolve-trigger",
+      "name": "Resolve Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        600
+      ],
+      "parameters": {
+        "path": "oqa-resolve-field",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "oqa-resolve-field"
+    },
+    {
+      "id": "build-resolve-request",
+      "name": "Build Claude Request (Resolve)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        600
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Body sent by the local worker (worker/lib/recipe_lib.js), mid-route, when\n// a recipe's static mapping doesn't recognize a page question. `questions`\n// must contain structural facts only (label text, field type, the site's\n// own option list, visible validation error text, whether it's mandatory)\n// - never a value, never anything the applicant typed or the vault holds.\n// `profile_context` is the same planning_safe facts already sent for this\n// route during planning (e.g. current_insurance.first_insured_year) - not\n// new exposure, just available again here so use_inferred_value has\n// something real to infer from. `valid_field_paths` is the flat list of\n// real schema/intake_schema.json 'group.field' paths, sent by the worker\n// (which has filesystem access) so this workflow can validate Claude's\n// field_mapping output without needing host filesystem access itself - \n// same reasoning as why registry/system-prompt/tools are passed in the\n// body on every call here, not read off disk.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.system_prompt || !Array.isArray(body.tools)) {\n throw new Error('Request body is missing \"system_prompt\" or \"tools\".');\n}\nif (!Array.isArray(body.questions) || body.questions.length === 0) {\n throw new Error('Request body is missing a non-empty \"questions\" array.');\n}\nif (!Array.isArray(body.valid_field_paths)) {\n throw new Error('Request body is missing \"valid_field_paths\".');\n}\n\nconst profileContext = (body.profile_context && typeof body.profile_context === 'object') ? body.profile_context : {};\n\n// INPUT GUARDRAIL: block before Claude ever sees it, not just rely on Claude\n// noticing. Structural label/option/error text (and profile_context, which\n// should only ever hold planning_safe values) should never contain an\n// email, phone number, Canadian postal code, or a long digit run (SIN/card/\n// licence-shaped) - if it does, something upstream is extracting the wrong\n// thing (e.g. an input's value instead of its label), and this is exactly\n// the kind of filtering bug the pipeline's flag_new_field convention exists\n// to surface, not silently forward.\nconst SUSPECT_PATTERNS = [\n { name: 'email', re: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/ },\n { name: 'phone_number', re: /(\\+?1[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}/ },\n { name: 'postal_code', re: /\\b[A-Za-z][0-9][A-Za-z]\\s?[0-9][A-Za-z][0-9]\\b/ },\n { name: 'long_digit_run', re: /\\d{9,}/ },\n];\nconst flatText = JSON.stringify(body.questions) + JSON.stringify(profileContext);\nconst tripped = SUSPECT_PATTERNS.filter((p) => p.re.test(flatText)).map((p) => p.name);\nif (tripped.length > 0) {\n return [{\n  json: {\n   run_id: body.run_id || null,\n   resolutions: [],\n   flags: [{\n    observed_at: 'resolve_fields request, questions or profile_context',\n    description: `Blocked before reaching Claude - payload matched pattern(s) suggesting a real value rather than page structure: ${tripped.join(', ')}. Not forwarded.`,\n    suggested_sensitivity: 'vault_only',\n   }],\n   blocked_by_input_guardrail: true,\n  },\n }];\n}\n\nconst allTools = body.tools || [];\nconst resolveTools = allTools.filter((t) => ['resolve_fields', 'flag_new_field'].includes(t.name));\n\nconst userContent = JSON.stringify({\n task: 'resolve_fields',\n questions: body.questions,\n profile_context: profileContext,\n}, null, 2);\n\nreturn [{\n json: {\n  run_id: body.run_id || null,\n  valid_field_paths: body.valid_field_paths,\n  questions: body.questions,\n  claude_request: {\n   model: body.model || 'claude-sonnet-5',\n   max_tokens: 4096,\n   system: body.system_prompt,\n   tools: resolveTools,\n   tool_choice: { type: 'auto' },\n   messages: [\n    { role: 'user', content: userContent },\n   ],\n  },\n },\n}];\n"
+      }
+    },
+    {
+      "id": "input-guardrail-check",
+      "name": "Input Guardrail Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        600
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.blocked_by_input_guardrail }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "notes": "TRUE branch (blocked) skips the Claude call entirely and goes straight to Parse Resolution with the block info already attached \u2014 the suspect payload never reaches the Claude HTTP node at all, not just discarded after the fact."
+    },
+    {
+      "id": "claude-resolve",
+      "name": "Claude \u2014 Resolve Fields",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        600
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claude_request) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER_SET_IN_N8N",
+          "name": "Anthropic API Key (x-api-key)"
+        }
+      },
+      "notes": "Same continueOnFail/retry-left-to-caller reasoning as the other two Claude nodes. This call happens mid-route on the worker's own clock, so it also has a shorter timeout (60s vs 90s) \u2014 a route is already mid-flight waiting on this."
+    },
+    {
+      "id": "parse-resolve",
+      "name": "Parse Resolution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        600
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "function extractApiError(resp) {\n let status = resp.statusCode || resp.httpCode\n  || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n let apiErrorType = null;\n let message = null;\n const rawError = resp.error;\n if (typeof rawError === 'string') {\n  message = rawError;\n } else if (rawError && typeof rawError === 'object') {\n  message = rawError.message || rawError.description || JSON.stringify(rawError);\n  if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n }\n if (resp.type === 'error' && resp.error && resp.error.type) {\n  apiErrorType = resp.error.type;\n  message = resp.error.message || message;\n }\n return { message: message || 'Unknown error', status, apiErrorType };\n}\n\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Resolve)').first().json;\n\n// The input guardrail node (Build Claude Request (Resolve)) can itself\n// short-circuit before ever calling Claude - if it did, that item flows\n// straight through this node too (no claude_request/upstream fields to\n// process), so just pass it on unchanged.\nif (upstream.blocked_by_input_guardrail) {\n return [{ json: upstream }];\n}\n\nif (claudeResponse.error || claudeResponse.type === 'error') {\n const info = extractApiError(claudeResponse);\n return [{ json: { run_id: upstream.run_id, resolutions: [], flags: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst resolveBlocks = toolUseBlocks.filter((b) => b.name === 'resolve_fields').map((b) => b.input);\nconst flags = toolUseBlocks.filter((b) => b.name === 'flag_new_field').map((b) => b.input);\n\nif (resolveBlocks.length === 0 && flags.length === 0) {\n return [{ json: { run_id: upstream.run_id, resolutions: [], flags: [], error: `Claude did not call resolve_fields or flag_new_field (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\n// OUTPUT GUARDRAIL: never trust Claude's field_mapping/strategy/\n// inferred_value at face value. field_mapping must be an exact match\n// against the field list the worker itself supplied. strategy must be one\n// of the fixed keywords - never free text. inferred_value (only relevant\n// for use_inferred_value) must be an exact match against that specific\n// question's own options list, also supplied by the worker - Claude cannot\n// introduce a value the worker didn't already disclose as one of the\n// site's own choices. Any failure forces the resolution to 'unresolved'\n// rather than letting the worker act on something unvalidated.\nconst VALID_STRATEGIES = new Set(['use_mapped_field_value', 'use_today_date', 'use_zero', 'use_inferred_value', 'pause_and_ask', 'skip_and_disclose', 'unresolved']);\nconst validFieldPaths = new Set(upstream.valid_field_paths || []);\nconst questionsById = new Map((upstream.questions || []).map((q) => [q.question_id, q]));\n\nconst allResolutions = resolveBlocks.flatMap((b) => Array.isArray(b.resolutions) ? b.resolutions : []);\nconst resolutions = allResolutions.map((r) => {\n let fieldMapping = r.field_mapping;\n let strategy = r.strategy;\n let inferredValue = typeof r.inferred_value === 'string' ? r.inferred_value : null;\n let guardrailNote = null;\n\n if (fieldMapping !== null && fieldMapping !== undefined && !validFieldPaths.has(fieldMapping)) {\n  guardrailNote = `field_mapping \"${fieldMapping}\" is not a real schema field - discarded by the output guardrail, not trusted.`;\n  fieldMapping = null;\n  strategy = 'unresolved';\n }\n if (!VALID_STRATEGIES.has(strategy)) {\n  guardrailNote = `strategy \"${strategy}\" is not one of the fixed keywords - discarded by the output guardrail, not trusted.`;\n  strategy = 'unresolved';\n }\n if (strategy === 'use_mapped_field_value' && !fieldMapping) {\n  guardrailNote = 'use_mapped_field_value with no valid field_mapping - forced to unresolved.';\n  strategy = 'unresolved';\n }\n if (strategy === 'use_inferred_value') {\n  const question = questionsById.get(r.question_id);\n  const allowedOptions = new Set((question && Array.isArray(question.options)) ? question.options : []);\n  if (!inferredValue || !allowedOptions.has(inferredValue)) {\n   guardrailNote = `use_inferred_value with inferred_value \"${inferredValue}\" not present in this question's own disclosed options - discarded by the output guardrail, not trusted.`;\n   inferredValue = null;\n   strategy = 'unresolved';\n  }\n } else {\n  inferredValue = null;\n }\n\n return {\n  question_id: r.question_id,\n  field_mapping: fieldMapping,\n  strategy,\n  inferred_value: inferredValue,\n  reason: typeof r.reason === 'string' ? r.reason.slice(0, 500) : '',\n  guardrail_note: guardrailNote,\n };\n});\n\nreturn [{\n json: {\n  run_id: upstream.run_id,\n  resolutions,\n  flags,\n  raw_stop_reason: claudeResponse.stop_reason,\n  usage: claudeResponse.usage || null,\n },\n}];\n"
+      }
+    },
+    {
+      "id": "respond-resolve",
+      "name": "Return Resolution",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        600
       ],
       "parameters": {
         "respondWith": "json",
@@ -222,14 +357,14 @@
       "main": [
         [
           {
-            "node": "Claude — Plan Routes",
+            "node": "Claude \u2014 Plan Routes",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Claude — Plan Routes": {
+    "Claude \u2014 Plan Routes": {
       "main": [
         [
           {
@@ -266,14 +401,14 @@
       "main": [
         [
           {
-            "node": "Claude — Compare",
+            "node": "Claude \u2014 Compare",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Claude — Compare": {
+    "Claude \u2014 Compare": {
       "main": [
         [
           {
@@ -289,6 +424,68 @@
         [
           {
             "node": "Return Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request (Resolve)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request (Resolve)": {
+      "main": [
+        [
+          {
+            "node": "Input Guardrail Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Guardrail Passed?": {
+      "main": [
+        [
+          {
+            "node": "Parse Resolution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude \u2014 Resolve Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude \u2014 Resolve Fields": {
+      "main": [
+        [
+          {
+            "node": "Parse Resolution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Resolution": {
+      "main": [
+        [
+          {
+            "node": "Return Resolution",
             "type": "main",
             "index": 0
           }

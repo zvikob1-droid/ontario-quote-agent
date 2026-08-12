@@ -1,0 +1,136 @@
+{
+  "run_id": "run_1786560486442_0tyb9t",
+  "generated_at": "2026-08-12T18:48:36.936Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic 4dr (My vehicle)",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic 4dr (My vehicle)",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in market_registry.json with status active_mvp; broad aggregator panel plausibly fits a standard daily-driver PPA profile like a new, owned, personal-use 2025 Civic.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8"
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Registry currently only has one resolved, verified route entry — rates_ca (active_mvp) — so that's the only thing actually planned this run. The 'underwriting_groups_seed' block (AIG, Allstate, Aviva, Intact/belairdirect, TD, Wawanesa, etc.) is exactly that — seed data listing insurer groups/legal entities for future route-building, per Appendix B. None of those have a quote_url, distribution_type, product_scope, or status set yet, so there's nothing concrete to plan or exclude by registry_id for them. If the goal for this run is to eventually reach direct writers like belairdirect, TD, Wawanesa, etc., those routes still need to be built out and verified in market_registry.json before I can plan against them — flagging that gap rather than silently substituting or skipping it.\n\nNo coverage_configuration fields (liability limit, deductibles, endorsements) were included in this profile input, so rates_ca will run with whatever its own defaults/prompts are for coverage — once a benchmark coverage config is supplied, later comparison will need it to judge comparability of what rates_ca actually returns.\n\nNothing in this profile looked like a name, DOB, licence number, VIN, or address — licensing-timeline years/ages and purchase price look like standard planning_safe rating factors, so I proceeded without flagging."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "No vehicle-model0 option starts with \"civic 4dr\" — model list may have changed.",
+          "evidence": {
+            "timestamp": "2026-08-12T18:48:36.941Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/48f5a82a-7243-4ab2-9b30-7faf8ef4109d/1786560524205_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic 4dr (My vehicle)",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "outcome": {
+              "failure_reason": "No vehicle-model dropdown option starts with \"civic 4dr\" — the site's model list appears to have changed since the route recipe was written.",
+              "classification": "implementation_gap"
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-12T18:48:36.941Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/48f5a82a-7243-4ab2-9b30-7faf8ef4109d/1786560524205_final.png"
+            },
+            "dedup_notes": "Only route attempted in this run; no other result to compare for duplication. Not a duplicate — genuinely no quote was reached."
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "Rates.ca did not return a quote this run — it never got past the vehicle-model dropdown because no option matched \"Civic 4dr,\" which means the site's model list has likely changed since this route's recipe was written. That's a bug in our automation, not a signal about Rates.ca's pricing or availability, so I'm not counting it as \"declined\" or \"not offered\" — it's simply unresolved.\n\nBottom line: zero comparable quotes came back this run. No premium, no coverage terms, no discount info was disclosed, because the process never reached a quote screen. A screenshot of the failure state was captured for debugging, but there's nothing here yet to compare against your $2M liability / $500 deductible / OPCF44R benchmark.\n\nThis was also the only route attempted in this run, so these completion/yield numbers reflect a single failed attempt, not a broader market check — they'll need to be re-run once the Rates.ca model-selection step is fixed, and ideally alongside the other planned routes to get an actual comparison.",
+        "gaps": [
+          "No quote obtained from Rates.ca this run — blocked by a model-dropdown mismatch (\"civic 4dr\" not found), which is an automation/recipe problem, not a market outcome.",
+          "Zero coverage or discount details available to compare against the benchmark (deductible, endorsements, winter tire discount, etc.) since no quote screen was reached.",
+          "Only one route was attempted in this run, so market_completion/comparable_quote_yield reflect a single data point, not overall market coverage — other planned routes (if any) haven't been reported back yet.",
+          "The Rates.ca route recipe needs its model-selection logic updated to match the site's current dropdown options before it can be retried."
+        ]
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 7123,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2561,
+          "output_tokens_details": {
+            "thinking_tokens": 1559
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic 4dr (My vehicle)",
+        "usage": {
+          "input_tokens": 4757,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2397,
+          "output_tokens_details": {
+            "thinking_tokens": 1198
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 16838
+  }
+}

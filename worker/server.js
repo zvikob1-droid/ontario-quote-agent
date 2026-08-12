@@ -33,9 +33,15 @@ const logger = require('./lib/logger');
 
 const PORT = process.env.OQA_WORKER_PORT || 8787;
 const HEADLESS = process.env.OQA_HEADLESS === 'true';
-const ROUTE_TIMEOUT_MS = Number(process.env.OQA_ROUTE_TIMEOUT_MS) || 15 * 60 * 1000; // 15 min — comfortably longer than pauseForHuman's default 10 min wait
 const ACTION_TIMEOUT_MS = Number(process.env.OQA_ACTION_TIMEOUT_MS) || 20 * 1000; // per fill/click
 const NAV_TIMEOUT_MS = Number(process.env.OQA_NAV_TIMEOUT_MS) || 30 * 1000; // per page navigation
+// Same base URL the orchestrator uses — the worker now also calls n8n
+// directly, mid-route, for resolveFieldsWithBrain (see recipe_lib.js). Not
+// required to start the worker; a recipe that never hits an unrecognized
+// field never needs it, and resolveFieldsWithBrain fails soft (unresolved,
+// not a crash) if it's unset when a recipe does try to use it.
+const N8N_BASE_URL = process.env.N8N_BASE_URL || null;
+const ROUTE_TIMEOUT_MS = Number(process.env.OQA_ROUTE_TIMEOUT_MS) || 15 * 60 * 1000; // 15 min — comfortably longer than pauseForHuman's default 10 min wait
 const RECIPES_DIR = path.join(__dirname, 'recipes');
 
 function loadRecipes() {
@@ -90,7 +96,7 @@ async function runRoute(recipes, routeId, params, vaultPassphrase) {
   try {
     const outcome = await lib.boundedAttempt(() =>
       lib.withTimeout(
-        recipe.run(page, { lib, params, vaultPassphrase, routeId, runId }),
+        recipe.run(page, { lib, params, vaultPassphrase, routeId, runId, n8nBaseUrl: N8N_BASE_URL }),
         ROUTE_TIMEOUT_MS,
         new lib.RouteTimeout(`Route exceeded ${Math.round(ROUTE_TIMEOUT_MS / 1000)}s overall.`)
       )
@@ -216,10 +222,13 @@ async function main() {
   server.requestTimeout = ROUTE_TIMEOUT_MS + 5 * 60 * 1000;
 
   server.listen(PORT, '127.0.0.1', () => {
-    logger.log('worker_started', { port: PORT, headless: HEADLESS, routes: Object.keys(recipes) });
+    logger.log('worker_started', { port: PORT, headless: HEADLESS, routes: Object.keys(recipes), n8nConfigured: !!N8N_BASE_URL });
     console.log(`Worker listening on http://127.0.0.1:${PORT} (loopback only)`);
     console.log(`Routes: ${Object.keys(recipes).join(', ')}`);
     console.log(`Browser mode: ${HEADLESS ? 'headless' : 'headful (visible)'}`);
+    console.log(N8N_BASE_URL
+      ? `Brain field resolution: enabled (${N8N_BASE_URL})`
+      : 'Brain field resolution: disabled (set N8N_BASE_URL to enable — a recipe hitting an unrecognized field will fail soft to unresolved without it)');
   });
 }
 
