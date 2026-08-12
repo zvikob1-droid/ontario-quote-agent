@@ -72,9 +72,20 @@ function ageAtYear(dobRaw, eventYear) {
   return y - dobYear;
 }
 
-async function fillIfEmpty(page, selector, value) {
+async function fillIfEmpty(page, selector, value, fieldLabel) {
   const current = await page.inputValue(selector).catch(() => '');
-  if (!current) await page.fill(selector, String(value));
+  if (!current) {
+    try {
+      await page.fill(selector, String(value));
+    } catch (e) {
+      // Same sanitization concern as recipe_lib.js's fillSensitive — this
+      // fills a vault_only value (name), and Playwright's own error message
+      // can embed the literal value it tried to type.
+      const sanitized = new Error(`Failed to fill "${fieldLabel || selector}" (${e.name || 'Error'}) — the value itself is never included in this error.`);
+      sanitized.name = e.name || 'Error';
+      throw sanitized;
+    }
+  }
 }
 
 async function clickChoice(page, questionText, label) {
@@ -98,11 +109,15 @@ module.exports = {
     await page.goto(module.exports.meta.entryUrl, { waitUntil: 'domcontentloaded' });
 
     // ---- Step 1/5: Personal Info ----
+    // identity.legal_name is vault_only and split locally here, so this goes
+    // through fillSensitive (sanitized-error + :visible scoping) rather than
+    // fillPlanning — see the recipe_lib.js comment on fillSensitive for why
+    // (a real name leaking into failure_reason the same way a postal code
+    // did on Rates.ca).
     const fullName = await lib.readVaultValue('identity.legal_name', vaultPassphrase);
     const spaceIdx = fullName.indexOf(' ');
-    await lib.fillPlanning(page, '#first_name', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx));
-    await lib.fillPlanning(page, '#last_name', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1));
-    maskSelectors.push('#first_name', '#last_name');
+    await lib.fillSensitive(page, '#first_name', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx), 'identity.legal_name (first)');
+    await lib.fillSensitive(page, '#last_name', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1), 'identity.legal_name (last)');
 
     await lib.fillFromVault(page, '#street_address', 'primary_address.street', vaultPassphrase);
     maskSelectors.push('#street_address');
@@ -183,8 +198,8 @@ module.exports = {
     // — the exact entry point isn't confirmed. Best-effort: fill only if
     // still empty, matching the fillIfEmpty pattern used for TD's licence
     // lookup, in case these turn out to be editable text fields here too.
-    await fillIfEmpty(page, 'label:has-text("First name") ~ input', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx)).catch(() => {});
-    await fillIfEmpty(page, 'label:has-text("Last name") ~ input', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1)).catch(() => {});
+    await fillIfEmpty(page, 'label:has-text("First name") ~ input', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx), 'identity.legal_name (first)').catch(() => {});
+    await fillIfEmpty(page, 'label:has-text("Last name") ~ input', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1), 'identity.legal_name (last)').catch(() => {});
 
     if (params['licence_identity.class']) {
       await page.locator('label:has-text("Driver\'s licence") ~ select').first().selectOption({ label: String(params['licence_identity.class']) }).catch(() => {});

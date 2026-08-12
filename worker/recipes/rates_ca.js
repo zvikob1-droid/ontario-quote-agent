@@ -61,8 +61,14 @@ const OCCUPATION_CODES = {
  * approximation, not an exact trim match. Logged so it shows up in evidence.
  */
 async function pickBestModelOption(page, requestedModel) {
+  // getElementById always returns the first match in document order, which
+  // may not be the visible one if this id is duplicated across responsive
+  // breakpoints (confirmed live for other fields on this page) — filter to
+  // the actually-visible element instead.
   const value = await page.evaluate((wanted) => {
-    const el = document.getElementById('vehicle-model0');
+    const els = Array.from(document.querySelectorAll('#vehicle-model0'));
+    const el = els.find((e) => e.offsetParent !== null) || els[0];
+    if (!el) return null;
     const match = Array.from(el.options).find(
       (o) => o.value && o.value.toUpperCase().startsWith(String(wanted).toUpperCase())
     );
@@ -71,7 +77,7 @@ async function pickBestModelOption(page, requestedModel) {
   if (!value) {
     throw new Error(`No vehicle-model0 option starts with "${requestedModel}" — model list may have changed.`);
   }
-  await page.selectOption('#vehicle-model0', value);
+  await page.selectOption('#vehicle-model0:visible', value);
   return value;
 }
 
@@ -99,10 +105,17 @@ module.exports = {
     await page.waitForURL('**/autoquote/on/vehicle');
 
     // ---- Vehicle Info ----
+    // These waits are for the cascading select's options to finish loading
+    // (year unlocks make, make unlocks model) — the default waitForSelector
+    // state is 'visible', which an <option> inside a closed <select> never
+    // satisfies, so this would time out unconditionally regardless of the
+    // site. 'attached' (present in the DOM) is the correct check here, and
+    // scoping to the visible <select> avoids counting a hidden duplicate's
+    // options.
     await lib.selectPlanning(page, '#vehicle-year0', String(params['vehicle_identity.model_year']));
-    await page.waitForSelector('#vehicle-make0 option:not([value=""])');
+    await page.waitForSelector('#vehicle-make0:visible option:not([value=""])', { state: 'attached' });
     await lib.selectPlanning(page, '#vehicle-make0', String(params['vehicle_identity.make']).toUpperCase());
-    await page.waitForSelector('#vehicle-model0 option:not([value=""])');
+    await page.waitForSelector('#vehicle-model0:visible option:not([value=""])', { state: 'attached' });
     await pickBestModelOption(page, params['vehicle_identity.model']);
 
     if (params['ownership.owned_or_leased']) {
@@ -132,7 +145,7 @@ module.exports = {
     await lib.selectPlanning(page, '#comprehensive-coverage0', /comprehensive/i.test(ownDamage) ? '1' : '0');
     await lib.selectPlanning(page, '#collision-coverage0', /collision/i.test(ownDamage) ? '1' : '0');
 
-    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Continue"):visible');
     await page.waitForURL('**/autoquote/on/driver');
 
     // ---- Driver Info ----
@@ -141,30 +154,33 @@ module.exports = {
     // (readVaultValue carries the same missing-field pause as fillFromVault)
     // rather than forcing it through an unrelated page field as scratch
     // storage, which risks tripping that field's own validation/side effects.
+    // These are vault_only values resolved locally (split/derived here rather
+    // than read fresh per-field), so they go through fillSensitive/
+    // selectSensitive — same :visible scoping and sanitized-error protection
+    // as fillFromVault/selectFromVault, just without re-reading the vault.
+    // Manual maskSelectors.push() isn't needed for these — both helpers
+    // track automatically.
     const fullName = await lib.readVaultValue('identity.legal_name', vaultPassphrase);
     const spaceIdx = fullName.indexOf(' ');
     const first = spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx);
     const last = spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1);
-    await page.fill('#first-name0', first);
-    await page.fill('#last-name\\[0\\]', last);
-    maskSelectors.push('#first-name0', '#last-name\\[0\\]');
+    await lib.fillSensitive(page, '#first-name0', first, 'identity.legal_name (first)');
+    await lib.fillSensitive(page, '#last-name\\[0\\]', last, 'identity.legal_name (last)');
 
     // Expected vault format: YYYY-MM-DD.
     const dobRaw = await lib.readVaultValue('identity.date_of_birth', vaultPassphrase);
     const [dobYear, dobMonth, dobDay] = String(dobRaw).split('-');
     if (dobYear && dobMonth && dobDay) {
-      await lib.selectPlanning(page, '#dob-month0', String(Number(dobMonth)));
-      await lib.selectPlanning(page, '#dob-day0', String(Number(dobDay)));
-      await lib.selectPlanning(page, '#dob-year0', dobYear);
+      await lib.selectSensitive(page, '#dob-month0', String(Number(dobMonth)), 'identity.date_of_birth (month)');
+      await lib.selectSensitive(page, '#dob-day0', String(Number(dobDay)), 'identity.date_of_birth (day)');
+      await lib.selectSensitive(page, '#dob-year0', dobYear, 'identity.date_of_birth (year)');
     }
-    maskSelectors.push('#dob-month0', '#dob-day0', '#dob-year0');
 
     const genderValue = await lib.readVaultValue('identity.gender_field_as_required_by_form', vaultPassphrase);
     if (genderValue) {
       const g = String(genderValue).toUpperCase();
-      await lib.selectPlanning(page, '#gender0', g.startsWith('F') ? 'F' : g.startsWith('M') ? 'M' : 'X');
+      await lib.selectSensitive(page, '#gender0', g.startsWith('F') ? 'F' : g.startsWith('M') ? 'M' : 'X', 'identity.gender_field_as_required_by_form');
     }
-    maskSelectors.push('#gender0');
 
     if (params['identity.marital_status']) {
       const maritalMap = { single: 'single', married: 'married' };
@@ -192,7 +208,13 @@ module.exports = {
       await lib.selectPlanning(page, '#first-insured-year0', String(params['current_insurance.first_insured_year']));
     }
     if (params['current_insurance.years_continuously_insured']) {
-      const opts = await page.evaluate(() => Array.from(document.getElementById('time-with-insurer0').options).map((o) => o.value));
+      // getElementById returns the first match regardless of visibility —
+      // same duplicate-id issue as elsewhere on this page.
+      const opts = await page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll('#time-with-insurer0'));
+        const el = els.find((e) => e.offsetParent !== null) || els[0];
+        return el ? Array.from(el.options).map((o) => o.value) : [];
+      });
       if (opts.length > 1) await lib.selectPlanning(page, '#time-with-insurer0', opts[1]);
     }
 
@@ -205,7 +227,7 @@ module.exports = {
       await lib.readVaultValue('insurance_cancellations.events', vaultPassphrase)
     );
     const cancellations = lib.filterEventsWithinYears(cancellationsAll, 3);
-    await page.click(`input[name="num-cancellations[0]"][value="${cancellations.length > 0 ? '1' : '0'}"]`);
+    await page.click(`input[name="num-cancellations[0]"][value="${cancellations.length > 0 ? '1' : '0'}"]:visible`);
 
     const suspensions = lib.parseEvents(
       await lib.readVaultValue('licence_and_permit_events.suspension_or_cancellation_events_6yr', vaultPassphrase)
@@ -243,11 +265,11 @@ module.exports = {
       await lib.fillPlanning(page, '#policy-start-date0', params['coverage_configuration.requested_effective_date']);
     }
 
-    await page.click('button:has-text("Continue")');
+    await page.click('button:has-text("Continue"):visible');
     await page.waitForURL('**/autoquote/on/discounts');
 
     // ---- Discount Info ----
-    await page.click('#bundle-0'); // "No, I don't want this discount" — safest default, no household-composition data assumed
+    await page.click('#bundle-0:visible'); // "No, I don't want this discount" — safest default, no household-composition data assumed
     if (params['discount_eligibility.good_driver_or_group_discounts']) {
       const discounts = params['discount_eligibility.good_driver_or_group_discounts'];
       await lib.selectPlanning(page, '#caa-member', Array.isArray(discounts) && discounts.includes('CAA') ? '1' : '0');

@@ -151,18 +151,22 @@ module.exports = {
     await page.waitForURL('**/driver_details**', { timeout: 60000 }).catch(() => {});
 
     // ---- Driver details ----
+    // identity.legal_name/date_of_birth are vault_only and split locally
+    // here, so text fills go through fillSensitive (sanitized-error +
+    // :visible scoping) rather than fillPlanning — see recipe_lib.js's
+    // fillSensitive comment for why (a real value leaking into
+    // failure_reason the same way a postal code did on Rates.ca).
     const fullName = await lib.readVaultValue('identity.legal_name', vaultPassphrase);
     const spaceIdx = fullName.indexOf(' ');
-    await lib.fillPlanning(page, 'label:has-text("First name") ~ input', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx));
-    await lib.fillPlanning(page, 'label:has-text("Last name") ~ input', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1));
-    maskSelectors.push('label:has-text("First name") ~ input', 'label:has-text("Last name") ~ input');
+    await lib.fillSensitive(page, 'label:has-text("First name") ~ input', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx), 'identity.legal_name (first)');
+    await lib.fillSensitive(page, 'label:has-text("Last name") ~ input', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1), 'identity.legal_name (last)');
 
     const dobRaw = await lib.readVaultValue('identity.date_of_birth', vaultPassphrase); // expected YYYY-MM-DD
     const [dobYear, dobMonth, dobDay] = String(dobRaw).split('-');
     if (dobMonth) await page.locator('label:has-text("Your birthday") ~ * select').first().selectOption({ index: Number(dobMonth) }).catch(() => {});
-    if (dobDay) await lib.fillPlanning(page, 'input[placeholder="Day" i]', String(Number(dobDay)));
-    if (dobYear) await lib.fillPlanning(page, 'input[placeholder="Year" i]', dobYear);
-    maskSelectors.push('label:has-text("Your birthday") ~ *', 'input[placeholder="Day" i]', 'input[placeholder="Year" i]');
+    if (dobDay) await lib.fillSensitive(page, 'input[placeholder="Day" i]', String(Number(dobDay)), 'identity.date_of_birth (day)');
+    if (dobYear) await lib.fillSensitive(page, 'input[placeholder="Year" i]', dobYear, 'identity.date_of_birth (year)');
+    maskSelectors.push('label:has-text("Your birthday") ~ *');
 
     // Issuing province already defaults to Ontario per the screenshot — left as-is.
     await lib.fillFromVault(page, 'label:has-text("Driver\'s licence number") ~ input', 'licence_identity.ontario_drivers_licence_number', vaultPassphrase);

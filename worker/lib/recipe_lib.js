@@ -227,23 +227,55 @@ function sanitizedFillError(e, vaultFieldPath) {
   return sanitized;
 }
 
+/**
+ * page.fill() sets the value directly and only fires 'input'/'change' —
+ * confirmed live on Rates.ca that a site can gate a submit button's
+ * disabled state on a real 'keyup' event specifically
+ * (pincodeElement.addEventListener('keyup', ...) in its own JS), which
+ * fill() never triggers no matter what value is set. A synthetic keyup
+ * after fill is a harmless no-op on any site that doesn't need it, so this
+ * runs unconditionally rather than only where it's been confirmed necessary.
+ */
+async function dispatchKeyupDefensively(page, selector) {
+  await page.dispatchEvent(selector, 'keyup').catch(() => {});
+}
+
+/**
+ * Confirmed live on Rates.ca: the same field id can appear 3 times on one
+ * page (plausibly duplicate markup across responsive breakpoints), and
+ * Playwright's default behaviour is to silently proceed with the first
+ * match rather than the one actually on screen — which then hangs waiting
+ * for a hidden element to become interactable. Every recipe interaction
+ * goes through these functions, so scoping to :visible here fixes this
+ * class of bug everywhere at once rather than requiring each recipe to
+ * remember to add it per selector. Idempotent if a selector already ends
+ * in :visible.
+ */
+function scopeToVisible(selector) {
+  return selector.trim().endsWith(':visible') ? selector : `${selector}:visible`;
+}
+
 async function fillFromVault(page, selector, vaultFieldPath, vaultPassphrase) {
   const value = await resolveVaultValue(vaultFieldPath, vaultPassphrase);
+  const scoped = scopeToVisible(selector);
   // Tracked before the attempt, not after — a fill that "fails" can still
   // have partially entered characters into the page before erroring out, so
   // the selector must be masked regardless of whether this call succeeds.
-  trackMaskSelector(page, selector);
+  trackMaskSelector(page, scoped);
   try {
-    await page.fill(selector, String(value));
+    await page.fill(scoped, String(value));
   } catch (e) {
     throw sanitizedFillError(e, vaultFieldPath);
   }
+  await dispatchKeyupDefensively(page, scoped);
   logger.log('field_filled', { field: vaultFieldPath, sensitivity: 'vault_only' });
 }
 
 /** Non-sensitive fill — value comes from the job params (n8n), not the vault. */
 async function fillPlanning(page, selector, value) {
-  await page.fill(selector, String(value));
+  const scoped = scopeToVisible(selector);
+  await page.fill(scoped, String(value));
+  await dispatchKeyupDefensively(page, scoped);
 }
 
 /**
@@ -252,9 +284,10 @@ async function fillPlanning(page, selector, value) {
  */
 async function selectFromVault(page, selector, vaultFieldPath, vaultPassphrase) {
   const value = await resolveVaultValue(vaultFieldPath, vaultPassphrase);
-  trackMaskSelector(page, selector);
+  const scoped = scopeToVisible(selector);
+  trackMaskSelector(page, scoped);
   try {
-    await page.selectOption(selector, String(value));
+    await page.selectOption(scoped, String(value));
   } catch (e) {
     throw sanitizedFillError(e, vaultFieldPath);
   }
@@ -263,13 +296,49 @@ async function selectFromVault(page, selector, vaultFieldPath, vaultPassphrase) 
 
 /** Non-sensitive <select> — value comes from job params, not the vault. */
 async function selectPlanning(page, selector, value) {
-  await page.selectOption(selector, String(value));
+  await page.selectOption(scopeToVisible(selector), String(value));
 }
 
 /** Non-sensitive checkbox/radio toggle — never used for a consent/agreement control (see pauseForHuman). */
 async function checkPlanning(page, selector, checked = true) {
-  if (checked) await page.check(selector);
-  else await page.uncheck(selector);
+  const scoped = scopeToVisible(selector);
+  if (checked) await page.check(scoped);
+  else await page.uncheck(scoped);
+}
+
+/**
+ * For a vault_only value a recipe already resolved and derived locally
+ * (e.g. splitting identity.legal_name into first/last, or
+ * identity.date_of_birth into month/day/year) rather than reading fresh
+ * via fillFromVault/selectFromVault. Using fillPlanning/selectPlanning for
+ * these would skip the sanitized-error protection those values need just
+ * as much as any other vault_only field — a failed fill/select could leak
+ * the real name/DOB/etc. into failure_reason exactly like the postal code
+ * incident. fieldLabel is only ever used in the error message, never the
+ * value.
+ */
+async function fillSensitive(page, selector, value, fieldLabel) {
+  const scoped = scopeToVisible(selector);
+  trackMaskSelector(page, scoped);
+  try {
+    await page.fill(scoped, String(value));
+  } catch (e) {
+    throw sanitizedFillError(e, fieldLabel);
+  }
+  await dispatchKeyupDefensively(page, scoped);
+  logger.log('field_filled', { field: fieldLabel, sensitivity: 'vault_only' });
+}
+
+/** Same as fillSensitive, but for a <select> dropdown. */
+async function selectSensitive(page, selector, value, fieldLabel) {
+  const scoped = scopeToVisible(selector);
+  trackMaskSelector(page, scoped);
+  try {
+    await page.selectOption(scoped, String(value));
+  } catch (e) {
+    throw sanitizedFillError(e, fieldLabel);
+  }
+  logger.log('field_filled', { field: fieldLabel, sensitivity: 'vault_only', kind: 'select' });
 }
 
 /**
@@ -391,6 +460,8 @@ module.exports = {
   selectFromVault,
   selectPlanning,
   checkPlanning,
+  fillSensitive,
+  selectSensitive,
   readVaultValue: resolveVaultValue,
   parseEvents,
   filterEventsWithinYears,

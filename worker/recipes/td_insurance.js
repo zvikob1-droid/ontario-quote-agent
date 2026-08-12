@@ -62,14 +62,36 @@ async function clickChoice(page, questionText, label) {
     .click();
 }
 
-async function fillIfEmpty(page, selector, value) {
-  const current = await page.inputValue(selector).catch(() => '');
-  if (!current) await page.fill(selector, String(value));
+// value here is frequently a vault_only field (name/DOB/address) respected
+// only if the licence lookup didn't already prefill it — Playwright's own
+// error message can embed the literal value on a failed fill/select, the
+// same way a postal code leaked on Rates.ca, so both sanitize on failure.
+function sanitizeFillIfEmptyError(e, selector, fieldLabel) {
+  const sanitized = new Error(`Failed to fill "${fieldLabel || selector}" (${e.name || 'Error'}) — the value itself is never included in this error.`);
+  sanitized.name = e.name || 'Error';
+  return sanitized;
 }
 
-async function selectIfEmpty(page, selector, value) {
+async function fillIfEmpty(page, selector, value, fieldLabel) {
   const current = await page.inputValue(selector).catch(() => '');
-  if (!current) await page.selectOption(selector, String(value)).catch(() => {});
+  if (!current) {
+    try {
+      await page.fill(selector, String(value));
+    } catch (e) {
+      throw sanitizeFillIfEmptyError(e, selector, fieldLabel);
+    }
+  }
+}
+
+async function selectIfEmpty(page, selector, value, fieldLabel) {
+  const current = await page.inputValue(selector).catch(() => '');
+  if (!current) {
+    try {
+      await page.selectOption(selector, String(value));
+    } catch (e) {
+      throw sanitizeFillIfEmptyError(e, selector, fieldLabel);
+    }
+  }
 }
 
 function kmBucketLabel(km) {
@@ -185,15 +207,19 @@ module.exports = {
     // ---- Your Details — respect whatever the licence lookup already filled ----
     const fullName = await lib.readVaultValue('identity.legal_name', vaultPassphrase);
     const spaceIdx = fullName.indexOf(' ');
-    await fillIfEmpty(page, 'label:has-text("First name") ~ input', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx));
-    await fillIfEmpty(page, 'label:has-text("Last name") ~ input', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1));
+    await fillIfEmpty(page, 'label:has-text("First name") ~ input', spaceIdx === -1 ? fullName : fullName.slice(0, spaceIdx), 'identity.legal_name (first)');
+    await fillIfEmpty(page, 'label:has-text("Last name") ~ input', spaceIdx === -1 ? '' : fullName.slice(spaceIdx + 1), 'identity.legal_name (last)');
     maskSelectors.push('label:has-text("First name") ~ input', 'label:has-text("Last name") ~ input');
 
     const dobRaw = await lib.readVaultValue('identity.date_of_birth', vaultPassphrase); // expected YYYY-MM-DD
     const [dobYear, dobMonth, dobDay] = String(dobRaw).split('-');
-    if (dobYear) await selectIfEmpty(page, 'label:has-text("Date of birth") ~ * select >> nth=0', dobYear);
-    if (dobMonth) await selectIfEmpty(page, 'label:has-text("Date of birth") ~ * select >> nth=1', String(Number(dobMonth)));
-    if (dobDay) await selectIfEmpty(page, 'label:has-text("Date of birth") ~ * select >> nth=2', String(Number(dobDay)));
+    // selectIfEmpty's own original leniency (best-effort, don't stop the
+    // whole recipe over one field) is preserved with .catch() here — the
+    // fix is sanitizing what it throws before that, not making it stop
+    // being lenient.
+    if (dobYear) await selectIfEmpty(page, 'label:has-text("Date of birth") ~ * select >> nth=0', dobYear, 'identity.date_of_birth (year)').catch(() => {});
+    if (dobMonth) await selectIfEmpty(page, 'label:has-text("Date of birth") ~ * select >> nth=1', String(Number(dobMonth)), 'identity.date_of_birth (month)').catch(() => {});
+    if (dobDay) await selectIfEmpty(page, 'label:has-text("Date of birth") ~ * select >> nth=2', String(Number(dobDay)), 'identity.date_of_birth (day)').catch(() => {});
     maskSelectors.push('label:has-text("Date of birth") ~ *');
 
     // Button group, not a text field — clicking the right option again if the
@@ -212,7 +238,7 @@ module.exports = {
 
     // ---- Your address ----
     const street = await lib.readVaultValue('primary_address.street', vaultPassphrase);
-    await fillIfEmpty(page, 'input[placeholder*="Start typing" i]', street);
+    await fillIfEmpty(page, 'input[placeholder*="Start typing" i]', street, 'primary_address.street');
     maskSelectors.push('input[placeholder*="Start typing" i]');
     // Likely opens an autocomplete suggestion list — best-effort first-result
     // click, not verified live.
