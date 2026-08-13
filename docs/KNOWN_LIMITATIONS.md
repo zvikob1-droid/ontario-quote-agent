@@ -31,18 +31,38 @@ challenge brief's requirement to state gaps rather than imply full coverage.
 
 ## Automation reliability
 
-- **Live-tested for 2 of 5 MVP routes; 3 remain screenshot-verified only.** `local_independent_broker`
-  and `rates_ca` have both been run end to end through the real worker against the live site with
-  real vault data. That process surfaced and fixed several real bugs a screenshot alone couldn't
-  have caught: duplicate form markup across responsive breakpoints causing the worker to interact
-  with a hidden element instead of the visible one, a submit button gated on a real `keyup` event
-  that Playwright's `.fill()` never fires, a vault-only value (a postal code) that leaked into an
-  error message before a site interaction was properly sanitized, and a vehicle-trim dropdown whose
-  live option list didn't exactly match the requested model string. All are fixed in
-  `worker/lib/recipe_lib.js` (centrally, so every recipe benefits) and `worker/recipes/rates_ca.js`.
-  Onlia, Sonnet, and TD Insurance are still only screenshot/discovery-verified, not yet run against
-  their live sites with real data — I'd genuinely expect at least one of the same classes of bug to
-  show up there too.
+- **Live-tested for 2 of 5 MVP routes; 3 remain screenshot-verified only — and testing effort this
+  cycle deliberately concentrated on `rates_ca`, not spread evenly.** `local_independent_broker` and
+  `rates_ca` have both been run end to end through the real worker against the live site with real
+  vault data; Onlia, Sonnet, and TD Insurance are still only screenshot/discovery-verified, not yet
+  run against their live sites with real data — I'd genuinely expect at least one of the same
+  classes of bug found below to show up there too, unconfirmed either way. That imbalance is a
+  deliberate choice, not an oversight: `rates_ca` is a broker aggregator that returns a whole panel
+  of carrier quotes from one route attempt (confirmed live: up to 8+ underwriters, each with its own
+  premium, from a single form submission), where Onlia/Sonnet/TD Insurance are each a single direct
+  writer returning exactly one premium per attempt. Hardening the one route that multiplies into
+  many results outweighed spreading the same debugging effort across three routes that each only
+  ever produce one — the other three remain exactly where they were, not attempted this cycle.
+  Concretely, `orchestrator/profiles.json`'s `requested_routes` was temporarily narrowed to
+  `["rates_ca"]` for the duration of this testing pass (that file is git-ignored, so this wouldn't
+  be visible from the repo alone without saying so here) — a local testing-focus setting, not a
+  permanent scope reduction; the full 5-route MVP plan is still what `market_registry.json` and the
+  rest of this document describe, and resetting that file to request all five is the honest next
+  step before the next full run.
+  Live testing on `rates_ca` surfaced and fixed several real bugs a screenshot alone couldn't have
+  caught: duplicate form markup across responsive breakpoints causing the worker to interact with a
+  hidden element instead of the visible one, a submit button gated on a real `keyup` event that
+  Playwright's `.fill()` never fires, a vault-only value (a postal code) that leaked into an error
+  message before a site interaction was properly sanitized, a vehicle-trim dropdown whose live
+  option list didn't exactly match the requested model string, a date field format assumption
+  ("MM-YYYY" vs. a bare year) that hung the browser trying to select an invalid month, a
+  vehicle-model selection silently reset by the site on a bounded-attempt retry pass, and (see
+  below) a site that echoes the driver's own name into dynamically-generated page text in a way the
+  masking mechanism didn't originally cover. All fixed in `worker/lib/recipe_lib.js` (centrally, so
+  every recipe benefits) and `worker/recipes/rates_ca.js`. This same live-testing pass also reached
+  a real end-to-end quote submission on Rates.ca for the first time (`status: quoted_non_comparable`,
+  a "Your Quotes" results page actually returned) — the first MVP route to get that far in this
+  build, and the reason a best-effort multi-carrier extractor (see below) was worth building at all.
 - **Onlia's field windows differ from every other MVP site's, in two ways at once.** Like TD, it
   asks about accidents/claims over 10 years, not the 6-year OAF 1 baseline. Unlike any other MVP
   site, it also asks about prior insurance cancellations over 5 years, not the 3-year baseline —
@@ -109,6 +129,44 @@ challenge brief's requirement to state gaps rather than imply full coverage.
     path — a real selector timeout resolved via an actual n8n round trip against a real page — is
     still proven only against mocks, not a real site. The other four recipes don't use it yet
     either.
+  - **Also built this cycle: a site-agnostic advisory-banner detector, plus a fix for the
+    destructive-retry incident it exposed.** Confirmed live, twice, in genuinely different forms:
+    Rates.ca can show a non-blocking informational banner mid-route ("we estimated your annual
+    usage at 8,000 km," "you got your licence 6 years before you had insurance") that isn't a
+    question at all — just a confirmation prompt. `lib.checkForAdvisoryBanner`/`snapshotPageText`
+    detect this by diffing the page's visible text against a snapshot taken earlier, not by
+    matching against a wordlist (an earlier version tried keyword matching and only ever proved it
+    recognized the one banner it was built against — corrected after direct pushback). Consults the
+    brain with the new text via the same `resolve_fields` mechanism and a new `acknowledge_and_continue`
+    strategy; only auto-proceeds on a confident answer, otherwise pauses for me. Resolving that
+    pause by clicking the site's own Continue button (the only real way to acknowledge an inline
+    banner) then exposed a second, more serious bug: the recipe would resume its own stale script
+    assuming it was still on the same page, fail against elements that no longer existed, trigger a
+    bounded-attempt retry, and that retry's full page reload silently destroyed everything I'd just
+    done by hand up to and including the Discount Info page. `lib.classifyCheckpointNavigation` now
+    distinguishes "landed exactly where the recipe's own next step was already headed" (skip the
+    redundant click, keep going) from "landed somewhere unrecognized" (stop cleanly, report
+    `manual_handoff`, never retry) — confirmed live to correctly handle both cases. **Not done:**
+    only wired into `rates_ca.js`; the other four recipes have no equivalent protection if a human
+    resolves a checkpoint there by advancing the page.
+  - **Also built this cycle: best-effort multi-carrier quote extraction, unverified against a
+    captured DOM contract.** Rates.ca is an aggregator that returns a whole panel from one
+    submission (confirmed live: a featured carrier's Basic and Recommended packages, then up to 8
+    more carriers at Basic-tier pricing only). `extractCarrierQuotes`/`extractPackageCoverageDetails`
+    (`worker/recipes/rates_ca.js`) pull carrier name, price, tier, and an itemized coverage
+    checklist for the two featured packages, tagging which benefits Recommended adds over Basic and
+    flagging it as a variance from the benchmark when the profile requested
+    `standard_mandatory_only` accident benefits. This is a heuristic built by iterating against real
+    screenshots this session (matching on known carrier names in text *and* image `alt`/`src`
+    attributes, since this site renders logos as images; locating price via a bounded ancestor walk;
+    included/excluded via relative text-color luminance) — not a selector written against a captured
+    DOM, because none was ever captured. It worked on the one live run that reached this page
+    tonight; it has not been proven against a second. `run_session.js#expandCarrierQuotes` fans this
+    into one comparable row per carrier for `oqa-compare`, with `price.annual_premium` set directly
+    from the extraction (the brain is explicitly instructed never to restate or re-derive that
+    number). The human-readable report also now opens with an explicit disclaimer that it never
+    recommends which policy to choose, since "Recommended" here is Rates.ca's own package label, not
+    an endorsement from this system.
 - **CAPTCHA / bot-detection.** A site that presents a CAPTCHA pauses the recipe (`lib.pauseForHuman()`)
   and hands off to me to solve it myself in the browser window — see `docs/ARCHITECTURE.md` §5.
   The recipe never solves or automates past one. A hard bot-detection wall with no human-solvable
@@ -134,6 +192,24 @@ challenge brief's requirement to state gaps rather than imply full coverage.
 - **Single applicant only.** The vault and intake schema hold only my own data. No other household
   driver's information is collected, so any route requiring another driver's consent/details is
   out of scope for this build.
+- **Confirmed live: a real name leak, root-caused and fixed, but revealing a gap that isn't fully
+  closed.** Rates.ca personalizes several Driver Info questions with the driver's own first name
+  once typed in (e.g. "How old was `<name>` when first licensed?"). The worker's masking only
+  covers the specific input selectors it fills, not every place a site echoes that value back into
+  its own generated text — so that name appeared, unmasked, in several evidence screenshots this
+  session (manually caught in pre-push review, redacted, re-verified before committing) and, once,
+  in the `resolve_fields` mid-route brain consultation itself: `worker/lib/recipe_lib.js`'s
+  scan-the-page-structure helpers (`scanVisibleFormQuestions`, `extractVisibleTextBlocks`) assume a
+  site's own label text is inherently `planning_safe`-shaped, and the input guardrail that's
+  supposed to catch a sensitive-looking value before it leaves the worker only pattern-matches
+  email/phone/postal-code/long-digit shapes — a plain name in ordinary prose matches none of those,
+  so it wasn't blocked, and it reached n8n and Claude via the API. **Not done:** the guardrail still
+  doesn't check outbound structural text against the applicant's own already-typed vault values, so
+  the same gap could recur on Rates.ca or any other site with similar personalization, and the fix
+  applied tonight was catching and redacting the specific evidence files affected, not closing the
+  underlying detection gap. Extending the guardrail to check candidate text against values the
+  recipe has itself already typed onto the page this run — without ever passing the guardrail a raw
+  value to compare against — is the honest next step.
 
 ## Orchestration
 
