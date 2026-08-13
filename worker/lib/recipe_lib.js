@@ -484,6 +484,33 @@ function pauseForHuman(message, { timeoutMs = 10 * 60 * 1000 } = {}) {
   });
 }
 
+/**
+ * Call right after any human checkpoint whose own resolution instructions
+ * tell the human to "click through it" on the site - e.g. acknowledging an
+ * inline banner by clicking the same Continue button the recipe's next
+ * line was already about to click. That single expected click IS the
+ * correct way to resolve the checkpoint, not a takeover - confirmed live,
+ * treating it as one is a real bug: it makes the ordinary, instructed way
+ * of resolving a checkpoint look identical to a human driving five pages
+ * ahead, and stops the recipe dead on the single most common resolution
+ * path. This distinguishes the two: 'unchanged' (still on the same page -
+ * the recipe should perform its own next click/wait as normal),
+ * 'advanced_as_expected' (now on exactly the page the recipe's own next
+ * step was headed to anyway - skip that redundant click/wait and continue
+ * the recipe's script from here, which is exactly "see the new page and
+ * keep entering what it's asking for"), or 'unexpected' (somewhere neither
+ * of those - the human has gone further than this one checkpoint's own
+ * resolution, and continuing the recipe's stale script from here risks the
+ * same destructive retry-and-reset this was built to prevent; the caller
+ * should stop cleanly rather than guess).
+ */
+function classifyCheckpointNavigation(page, urlBeforeCheckpoint, expectedNextUrlSubstring) {
+  const currentUrl = page.url();
+  if (currentUrl === urlBeforeCheckpoint) return 'unchanged';
+  if (expectedNextUrlSubstring && currentUrl.includes(expectedNextUrlSubstring)) return 'advanced_as_expected';
+  return 'unexpected';
+}
+
 // Same three patterns the n8n workflow's own input guardrail checks —
 // duplicated here deliberately (defense in depth, not trust-the-network):
 // even if n8n's check were ever bypassed, disabled, or out of sync, this
@@ -501,6 +528,7 @@ const VALID_RESOLVE_STRATEGIES = new Set([
   'use_today_date',
   'use_zero',
   'use_inferred_value',
+  'acknowledge_and_continue',
   'pause_and_ask',
   'skip_and_disclose',
   'unresolved',
@@ -628,6 +656,251 @@ async function resolveFieldsWithBrain(questions, { n8nBaseUrl, routeId, runId, p
   });
 }
 
+/**
+ * Structural-only DOM scan used by fillPlanningResilient/selectPlanningResilient
+ * below: every currently visible <label> on the page paired with its
+ * adjacent select/input and (for a select) the site's own option *text* -
+ * never a value read off the field, since a planning_safe field's selector
+ * can legitimately fail before ever being filled. Same shape of data
+ * resolveFieldsWithBrain already accepts elsewhere in this file (label,
+ * field_type, options), just gathered from the live page instead of
+ * hand-written into the recipe.
+ */
+async function scanVisibleFormQuestions(page, { kind = null, limit = 40 } = {}) {
+  return page.evaluate(({ kind, limit }) => {
+    const isVisible = (el) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const labels = Array.from(document.querySelectorAll('label')).filter(isVisible);
+    const out = [];
+    for (const label of labels) {
+      const text = (label.textContent || '').trim();
+      if (!text) continue;
+      const container = label.closest('div') || label.parentElement;
+      if (!container) continue;
+      const select = container.querySelector('select');
+      const input = container.querySelector('input:not([type="hidden"])');
+      const field = kind === 'select' ? select : kind === 'input' ? input : (select || input);
+      if (!field || !isVisible(field)) continue;
+      const fieldType = field.tagName.toLowerCase() === 'select' ? 'select' : (field.getAttribute('type') || 'text');
+      const options = field.tagName.toLowerCase() === 'select'
+        ? Array.from(field.options).map((o) => o.textContent.trim()).filter(Boolean)
+        : null;
+      out.push({ label: text, field_type: fieldType, options });
+      if (out.length >= limit) break;
+    }
+    return out;
+  }, { kind, limit });
+}
+
+/**
+ * Brain-assisted selector rediscovery, called only after a recipe's own
+ * selector for a KNOWN schema field has already failed. Never used for a
+ * vault_only field (see fillFromVault/fillSensitive) - schemaField must be a
+ * planning_safe field this recipe already knows how to answer; the only
+ * thing that's unknown is which element on the page it now maps to. Returns
+ * a fresh selector string to retry with, or null if nothing could be
+ * resolved (n8n not configured, no candidate matched, or the guardrails
+ * discarded the answer) - the caller is expected to fall back to the
+ * original error in that case, never to silently skip the field.
+ */
+async function rediscoverSelector(page, { schemaField, kind, ctx = {} }) {
+  if (!schemaField || !ctx.n8nBaseUrl) return null;
+  let candidates;
+  try {
+    candidates = await scanVisibleFormQuestions(page, { kind });
+  } catch (e) {
+    logger.log('resilient_selector_scan_failed', { schemaField, message: e.message });
+    return null;
+  }
+  if (!candidates.length) return null;
+
+  const questions = candidates.map((c) => ({
+    question_id: c.label,
+    label: c.label,
+    field_type: c.field_type,
+    options: c.options,
+    is_mandatory: false,
+  }));
+  const resolutions = await resolveFieldsWithBrain(questions, {
+    n8nBaseUrl: ctx.n8nBaseUrl,
+    routeId: ctx.routeId,
+    runId: ctx.runId,
+    profileContext: {},
+  });
+  const match = resolutions.find((r) => r.field_mapping === schemaField && r.strategy === 'use_mapped_field_value');
+  if (!match) {
+    logger.log('resilient_selector_no_match', { schemaField });
+    return null;
+  }
+  const candidate = candidates.find((c) => c.label === match.question_id);
+  if (!candidate) return null;
+  logger.log('resilient_selector_matched', { schemaField, matchedLabel: candidate.label });
+  const safeText = candidate.label.replace(/"/g, '');
+  return kind === 'select' ? `label:has-text("${safeText}") ~ select` : `label:has-text("${safeText}") ~ input`;
+}
+
+/**
+ * Same as fillPlanning, but if the given selector times out, falls back to
+ * rediscoverSelector before giving up - lets a recipe survive a site
+ * rewording a known question instead of needing a hand-patched selector
+ * every time live testing surfaces one. Only for planning_safe fields with
+ * a real schemaField mapping; if that fallback can't resolve anything
+ * (n8n not configured, no match), the original timeout error is rethrown
+ * unchanged - this is a resilience layer, not a silent skip.
+ */
+async function fillPlanningResilient(page, selector, value, { schemaField, ctx = {} } = {}) {
+  try {
+    await fillPlanning(page, selector, value);
+  } catch (e) {
+    const resolved = await rediscoverSelector(page, { schemaField, kind: 'input', ctx });
+    if (!resolved) throw e;
+    await fillPlanning(page, resolved, value);
+  }
+}
+
+/** Same as fillPlanningResilient, but for a <select> dropdown. */
+async function selectPlanningResilient(page, selector, value, { schemaField, ctx = {} } = {}) {
+  try {
+    await selectPlanning(page, selector, value);
+  } catch (e) {
+    const resolved = await rediscoverSelector(page, { schemaField, kind: 'select', ctx });
+    if (!resolved) throw e;
+    await selectPlanning(page, resolved, value);
+  }
+}
+
+/**
+ * Generic pre-continue check for an advisory/confirmation banner - not a
+ * known form field, not a blocking validation error the recipe already
+ * handles, just a message the site surfaced in response to what's already
+ * been filled (e.g. "we noticed a gap between X and Y - if correct,
+ * continue"). Confirmed live on Rates.ca once already; deliberately built
+ * as a site-agnostic detector (structural role/class signal + a small set
+ * of generic confirmation phrases), not hardcoded to that site's exact
+ * wording, so any recipe can call this before any "Continue"/"Next" click
+ * without per-site tuning. Costs nothing when nothing matches - no brain
+ * call happens unless a candidate banner is actually found.
+ *
+ * Only ever acts automatically on 'acknowledge_and_continue'; every other
+ * outcome (including no n8n configured, or the brain declining to decide)
+ * is treated as NOT handled, so the caller can fall back to pauseForHuman
+ * rather than silently clicking past something that might matter. This
+ * never substitutes for the existing consent/agreement/signature/payment
+ * human checkpoints - the system prompt guidance for acknowledge_and_continue
+ * explicitly excludes those, and this function has no special access to
+ * bypass pauseForHuman regardless of what the brain returns.
+ */
+const pageTextBaselines = new WeakMap();
+
+async function extractVisibleTextBlocks(page) {
+  return page.evaluate(() => {
+    const isVisible = (el) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const pool = Array.from(document.querySelectorAll('div, p, span, li, section')).slice(0, 3000);
+    const seen = new Set();
+    const out = [];
+    for (const el of pool) {
+      if (!isVisible(el)) continue;
+      // Prefer innermost text-bearing nodes - skip a wrapper whose own
+      // children already carry non-trivial text, so a sentence isn't
+      // reported once per ancestor as well as at its actual leaf.
+      if (el.children.length > 0) {
+        const hasTextyChild = Array.from(el.children).some((c) => (c.textContent || '').trim().length > 5);
+        if (hasTextyChild) continue;
+      }
+      const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      // Sentence-shaped content only (multi-word, reasonable length) -
+      // excludes bare labels, numbers, and single-word UI chrome, without
+      // requiring any particular wording.
+      if (!text || text.length < 15 || text.length > 400 || !/\s/.test(text)) continue;
+      if (seen.has(text)) continue;
+      seen.add(text);
+      out.push(text);
+    }
+    return out;
+  });
+}
+
+/**
+ * Marks the page's currently visible sentence-shaped text as the baseline
+ * for checkForAdvisoryBanner's diff - call once per page, right after each
+ * navigation and before filling anything, so the first real check has a
+ * genuine "nothing filled in yet" starting point instead of treating the
+ * whole page's pre-existing content as new.
+ */
+async function snapshotPageText(page) {
+  const blocks = await extractVisibleTextBlocks(page);
+  pageTextBaselines.set(page, new Set(blocks));
+}
+
+/**
+ * Generic, site-agnostic advisory-banner detector - NOT matched against any
+ * particular wording (an earlier version tried keyword-matching a fixed
+ * phrase list, which only ever proved it could recognize the one real
+ * banner it was built and tested against - not a general fix). Instead,
+ * diffs the page's currently visible sentence-shaped text against whatever
+ * was last recorded via snapshotPageText/an earlier call to this function
+ * on the same page. Anything genuinely NEW is a candidate, regardless of
+ * what it says, since a real banner's phrasing on a site this hasn't seen
+ * yet can't be predicted in advance. If no baseline exists for this page
+ * yet, this call establishes one and reports nothing, rather than flooding
+ * the brain with everything already on the page on the very first check.
+ */
+async function checkForAdvisoryBanner(page, { ctx = {}, gapNotes } = {}) {
+  const currentBlocks = await extractVisibleTextBlocks(page);
+  const baseline = pageTextBaselines.get(page);
+  pageTextBaselines.set(page, new Set(currentBlocks));
+
+  if (!baseline) return { handled: false, resolutions: [] };
+
+  const newBlocks = currentBlocks.filter((t) => !baseline.has(t)).slice(0, 5);
+  if (!newBlocks.length) return { handled: false, resolutions: [] };
+
+  const questions = newBlocks.map((text, i) => ({
+    question_id: `advisory_banner_${i}`,
+    label: text,
+    field_type: 'advisory_banner',
+    options: null,
+    is_mandatory: false,
+  }));
+  const resolutions = await resolveFieldsWithBrain(questions, {
+    n8nBaseUrl: ctx.n8nBaseUrl,
+    routeId: ctx.routeId,
+    runId: ctx.runId,
+    profileContext: {},
+  });
+
+  const textByQuestionId = new Map(questions.map((q) => [q.question_id, q.label]));
+  let allAcknowledged = resolutions.length > 0;
+  const unhandledDetails = [];
+  for (const r of resolutions) {
+    if (r.strategy === 'acknowledge_and_continue') {
+      if (gapNotes) gapNotes.push(`The site showed new advisory text not tied to a known field - acknowledged and continued: ${r.reason || 'informational only, no blocking action required'}.`);
+    } else {
+      allAcknowledged = false;
+      const text = textByQuestionId.get(r.question_id) || '(text unavailable)';
+      unhandledDetails.push(`"${text}" - ${r.strategy}${r.reason ? `: ${r.reason}` : ''}`);
+      if (gapNotes) gapNotes.push(`The site showed new advisory text that wasn't confidently auto-acknowledged (${r.strategy}) - ${r.reason || 'treated as needing human review'}.`);
+    }
+  }
+  // Built here (not left generic at each call site) so a human checkpoint's
+  // terminal prompt actually shows what was found and why, instead of just
+  // "something appeared, go look" - the whole point of surfacing this is to
+  // let a quick terminal read replace a browser-window guessing game.
+  const pauseMessage = unhandledDetails.length
+    ? `The site showed new text that could not be confidently auto-acknowledged:\n${unhandledDetails.map((d) => `  - ${d}`).join('\n')}\nCheck the browser window - if it looks safe to proceed, click through it yourself, then press Enter to continue.`
+    : null;
+  return { handled: allAcknowledged, resolutions, pauseMessage };
+}
+
 module.exports = {
   STATUS,
   HumanCheckpoint,
@@ -639,12 +912,17 @@ module.exports = {
   getTrackedMaskSelectors,
   fillFromVault,
   fillPlanning,
+  fillPlanningResilient,
   selectFromVault,
   selectPlanning,
+  selectPlanningResilient,
   checkPlanning,
   fillSensitive,
   selectSensitive,
   resolveFieldsWithBrain,
+  scanVisibleFormQuestions,
+  checkForAdvisoryBanner,
+  snapshotPageText,
   fieldSensitivity,
   readVaultValue: resolveVaultValue,
   parseEvents,
@@ -652,5 +930,6 @@ module.exports = {
   boundedAttempt,
   withTimeout,
   pauseForHuman,
+  classifyCheckpointNavigation,
   logger,
 };

@@ -236,6 +236,13 @@ function renderMarkdownReport(finalReport, benchmarkCoverage) {
   const lines = [];
   lines.push(`# Ontario Quote Agent — Run Report`);
   lines.push('');
+  lines.push(
+    '> **This report does not recommend or advise which policy to choose.** It presents prices and ' +
+      'coverage differences factually so you can compare them yourself. Where "Recommended" appears below ' +
+      '(e.g. a "Recommended Coverage" package), that is the insurer/aggregator\'s own product label, not an ' +
+      'endorsement from this system — this tool never tells you which option is suitable for you.'
+  );
+  lines.push('');
   lines.push(`Run: \`${finalReport.run_id}\` · Generated: ${finalReport.generated_at}`);
   lines.push('');
   lines.push(`**Requested coverage:** ${formatBenchmarkCoverage(benchmarkCoverage)}`);
@@ -311,6 +318,49 @@ function renderMarkdownReport(finalReport, benchmarkCoverage) {
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Fans a single worker result carrying a multi-carrier breakdown
+ * (result.outcome.carrier_quotes — see worker/recipes/rates_ca.js's
+ * extractCarrierQuotes) into one comparison-ready entry per carrier, each
+ * tagged with a synthesized registry_id ("rates_ca:caa", "rates_ca:sgi",
+ * ...) so it reads as its own row rather than being buried inside one
+ * route's outcome text. price.annual_premium is set directly from the
+ * worker's own structured extraction here, not left for Claude to
+ * re-derive — see brain/system_prompt.md's normalization rule on why a
+ * financial figure the worker already extracted precisely should never be
+ * restated by the brain. A result with no carrier_quotes passes through
+ * unchanged. This only affects what's sent to oqa-compare for comparison —
+ * the report's own worker_results still reflects exactly what was actually
+ * called (one call per planned route), unexpanded.
+ */
+function expandCarrierQuotes(results) {
+  const expanded = [];
+  for (const r of results) {
+    const carrierQuotes = r.outcome && Array.isArray(r.outcome.carrier_quotes) ? r.outcome.carrier_quotes : null;
+    if (!carrierQuotes || carrierQuotes.length === 0) {
+      expanded.push(r);
+      continue;
+    }
+    const { carrier_quotes, ...restOutcome } = r.outcome;
+    for (const c of carrierQuotes) {
+      const carrierSlug = String(c.underwriter || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      // Always suffixed with tier - the featured carrier returns two rows
+      // (Basic and Recommended) sharing one underwriter name but different
+      // prices/coverage; without this they'd collide into the same
+      // registry_id and one would silently overwrite the other.
+      const slug = c.package_tier ? `${carrierSlug}_${c.package_tier}` : carrierSlug;
+      expanded.push({
+        registry_id: `${r.registry_id}:${slug}`,
+        status: r.status,
+        outcome: { ...restOutcome, underwriter: c.underwriter, is_recommended: c.is_recommended, package_tier: c.package_tier },
+        price: { annual_premium: c.annual_premium != null ? c.annual_premium : null },
+        evidence: r.evidence,
+      });
+    }
+  }
+  return expanded;
 }
 
 async function main() {
@@ -429,12 +479,27 @@ async function main() {
   for (const routePlan of planResp.route_plans || []) {
     const profileLabel = routePlan.profile_label;
     console.log(`\n[${profileLabel}] Planned routes:`);
-    const plannedRoutes = (routePlan.routes || []).filter((r) => allowedRoutes.has(r.registry_id));
-    for (const r of routePlan.routes || []) {
+    // Defensive: routePlan.routes should always be an array per
+    // submit_route_plan's schema, but a malformed tool call (or a parsing
+    // bug upstream in n8n) could hand back something else - surface exactly
+    // what was received and treat it as zero planned routes for this
+    // profile rather than crashing the whole session on a `.filter is not
+    // a function` with no diagnostic information.
+    if (routePlan.routes !== undefined && !Array.isArray(routePlan.routes)) {
+      console.error(
+        `  WARNING: routePlan.routes was not an array (got ${typeof routePlan.routes}: ` +
+          `${JSON.stringify(routePlan.routes).slice(0, 300)}) - check the n8n "oqa-plan" webhook's ` +
+          'response shape. Treating this profile as having zero planned routes rather than crashing.'
+      );
+      logger.log('plan_routes_malformed', { profileLabel, receivedType: typeof routePlan.routes });
+    }
+    const routesArray = Array.isArray(routePlan.routes) ? routePlan.routes : [];
+    const plannedRoutes = routesArray.filter((r) => allowedRoutes.has(r.registry_id));
+    for (const r of routesArray) {
       const inScope = allowedRoutes.has(r.registry_id) ? '' : '  (skipped — not in requested_routes)';
       console.log(`  - ${r.registry_id} (priority ${r.priority})${inScope}`);
     }
-    if ((routePlan.routes || []).length === 0) {
+    if (routesArray.length === 0) {
       console.log('  (none)');
     }
     for (const ex of routePlan.excluded_routes || []) {
@@ -462,6 +527,12 @@ async function main() {
       }
     }
 
+    const resultsForCompare = expandCarrierQuotes(results);
+    const expandedCarrierCount = resultsForCompare.length - results.length;
+    if (expandedCarrierCount > 0) {
+      console.log(`  (expanded a multi-carrier result into ${resultsForCompare.length} comparison rows)`);
+    }
+
     console.log(`  Requesting comparison for [${profileLabel}] ...`);
     let compareResp;
     try {
@@ -474,7 +545,7 @@ async function main() {
           run_id: runId,
           profile_label: profileLabel,
           benchmark_coverage: profilesConfig.benchmark_coverage,
-          results,
+          results: resultsForCompare,
         },
         { timeoutMs: N8N_TIMEOUT_MS }
       );

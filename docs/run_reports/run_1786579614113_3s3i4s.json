@@ -1,0 +1,149 @@
+{
+  "run_id": "run_1786579614113_3s3i4s",
+  "generated_at": "2026-08-13T00:07:18.729Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": 2025,
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": 20000,
+              "use.annual_kilometres": 8000,
+              "use.one_way_commute_distance": 0,
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": 21,
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": 8,
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            },
+            "reason": "Only route in the market registry with status active_mvp / a real quote_url and distinct_rate_source_id. Product scope standard_PPA matches this profile (new, owned, personal-use daily driver, no HNW or collector signals). This is the sole route this run can actually attempt."
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Heads up on scope: the registry's `routes` array only contains one entry — rates_ca, status active_mvp — so that's the only route this plan can submit. The long `underwriting_groups_seed` list (AIG, Allstate, Aviva, Intact/belairdirect, TD, Wawanesa, etc.) is reference data mapping insurer groups to legal entities for future route-building — none of those have a registry_id, quote_url, status, or distinct_rate_source_id yet, so there's nothing executable to plan for them. I'm not substituting anything in their place. If you want broker/direct channels for e.g. belairdirect, TD, Sonnet, or Square One checked this run, those routes need to be built and verified in the registry first — right now attempting them isn't possible from what's given.\n\nNo FSA (postal prefix) was present in this profile's fields, so rates_ca will need that supplied at intake time if the site requires it — flagging so it doesn't get missed downstream, not filling it in with a guess.\n\nOne route, no distinct_rate_source_id conflicts to resolve since there's nothing else on the panel to de-dupe against yet."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.selectOption: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('label:has-text(\"G licence date\") ~ * select:visible').first()\u001b[22m\n\u001b[2m    - locator resolved to <select id=\"full-license-month0\" aria-label=\"G licence date\" name=\"full-license-month[0]\" class=\"full-license-month month\" aria-labelledby=\"ariaFullLicense\">…</select>\u001b[22m\n\u001b[2m  - attempting select option action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - did not find some options\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - did not find some options\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    40 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m       - did not find some options\u001b[22m\n\u001b[2m     - retrying select option action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-13T00:07:18.733Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/d2cd02b6-c077-46e2-af6d-50686b41b780/1786579688853_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "gaps": [
+          "Only one route (rates_ca) was attempted this run and it did not complete — no comparable market data was gathered for the 2025 Honda Civic LX 4dr profile.",
+          "The rates_ca failure is a worker/recipe issue (timeout selecting an option in the 'G licence date' dropdown), not a market finding — Rates.ca was not actually reached with a completed application, so nothing can be said about their pricing or eligibility.",
+          "No other routes (e.g. LowestRates.ca, direct insurer sites) were run in this batch, so overall market coverage for this profile is effectively unassessed."
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "No duplicate concern — this is the only result returned this run.",
+            "outcome": {
+              "summary": "Route did not complete. The worker's recipe timed out repeatedly trying to select a value in the 'G licence date' month dropdown — the expected options weren't found, so the form could not be advanced. This is an implementation/recipe gap, not a signal that Rates.ca declined or was unable to quote this profile."
+            },
+            "evidence": {
+              "timestamp": "2026-08-13T00:07:18.733Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/d2cd02b6-c077-46e2-af6d-50686b41b780/1786579688853_final.png",
+              "failure_reason": "page.selectOption timeout: could not find expected options for the 'G licence date' select element after repeated retries."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            }
+          }
+        ],
+        "summary_text": "Short version: no usable quote this run. The only route attempted, Rates.ca, stalled and never got past its own intake form — the recipe couldn't select a value in the 'G licence date' dropdown after repeated retries and timed out. That's a bug in the automation, not Rates.ca telling us anything about eligibility or price for the 2025 Civic LX, so I'm reporting it as unresolved rather than declined or quoted. No premium, no coverage detail, and no discount info was ever disclosed at this step. Nothing else was attempted in this batch, so there's no comparison to show yet — this needs the recipe fixed (likely the dropdown's option values or timing changed on Rates.ca's page) and a re-run, plus additional routes if you want broader market coverage for this profile."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9059,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2368,
+          "output_tokens_details": {
+            "thinking_tokens": 1253
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 6903,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2009,
+          "output_tokens_details": {
+            "thinking_tokens": 928
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 20339
+  }
+}

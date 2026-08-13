@@ -1,0 +1,150 @@
+{
+  "run_id": "run_1786580324971_fv46vm",
+  "generated_at": "2026-08-13T00:19:06.362Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr (personal use, owned)",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr (personal use, owned)",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the market registry with status active_mvp; product_scope standard_PPA fits this profile (new, owned, personal-use Civic, no high-net-worth or collector signals).",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Registry currently only has one route with an actual status/quote_url/verification: rates_ca (active_mvp), and that's what's planned. The long underwriting_groups_seed list (AIG, Allstate, Aviva, Intact, TD, Wawanesa, etc.) is exactly that — a seed list of insurer legal entities with validation notes, not yet built-out routable entries (no quote_url, no status, no distinct_rate_source_id). None of them are plannable yet; if you want broader market coverage (e.g. a direct belairdirect or TD route, or a broker aggregator like LowestRates.ca), those need to be added to market_registry.json as verified routes first — I won't substitute or fabricate a route for them. No exclusions needed this run since there was only ever one real candidate to evaluate, and it passed the product_scope check (standard personal-use PPA, no HNW/collector signal). No FSA was included in this profile — flagging separately isn't needed since nothing sensitive was present, just noting the profile is otherwise complete for what rates_ca needs."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/autoquote/on/driver\" until \"load\"\n  navigated to \"https://ratesinsuranceservices.rates.ca/autoquote/on/vehicle\"\n============================================================",
+          "evidence": {
+            "timestamp": "2026-08-13T00:19:06.366Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/2f53a5e1-e64b-40cd-8284-4d1522e59fd4/1786580405464_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr (personal use, owned)",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "No other result to compare against in this run; not a duplicate of anything.",
+            "outcome": {
+              "summary": "Route stalled mid-navigation on Rates.ca — timed out waiting for the driver-info page after submitting vehicle details. No quote was reached.",
+              "failure_reason": "page.waitForURL timeout (30000ms) waiting for navigation to '**/autoquote/on/driver'; browser was left on the vehicle page instead."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-13T00:19:06.366Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/2f53a5e1-e64b-40cd-8284-4d1522e59fd4/1786580405464_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "gaps": [
+          "Rates.ca did not produce a quote this run — it timed out navigating from the vehicle page to the driver page, so no premium, coverage, or discount information was obtained.",
+          "No other routes were included in this batch, so there's nothing yet to compare Rates.ca against for this profile.",
+          "Unclear whether the timeout is transient (site slowness) or a page-flow change on Rates.ca's end; worth a retry before concluding the route is broken.",
+          "Screenshot evidence exists for the failure point but hasn't been reviewed here — only the timeout log was used to characterize the outcome."
+        ],
+        "summary_text": "Just one route came back this run, and it didn't get anywhere: Rates.ca timed out after submitting vehicle info, stuck on the vehicle page instead of advancing to driver details. No premium, no coverage terms, no discount info — nothing to compare to your benchmark yet. This is a stalled/unresolved run, not a decline or a \"not offered\" — the site simply didn't respond as expected within 30s. I'd retry this one before drawing any conclusions about Rates.ca; there's a screenshot captured at the failure point if you want to see exactly where it stuck. No other routes were part of this batch, so market coverage for this profile is effectively 0% right now."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9059,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2061,
+          "output_tokens_details": {
+            "thinking_tokens": 897
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr (personal use, owned)",
+        "usage": {
+          "input_tokens": 6507,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1461,
+          "output_tokens_details": {
+            "thinking_tokens": 440
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 19088
+  }
+}

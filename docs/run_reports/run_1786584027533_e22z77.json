@@ -1,0 +1,150 @@
+{
+  "run_id": "run_1786584027533_e22z77",
+  "generated_at": "2026-08-13T01:20:48.923Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr (personal use)",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr (personal use)",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry marked active_mvp with a verified quote URL and broad panel connectivity fitting a standard personal-use PPA profile.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Only one route exists in the market registry with an actual status/URL: rates_ca (active_mvp, broad panel aggregator) — that's the only one I can plan this run. The long underwriting_groups_seed list (AIG, Allstate, Aviva, Intact, TD, Wawanesa, etc.) is just a reference table of insurer legal entities/ownership for future dedupe logic — none of those have a registry_id, quote_url, or status yet, so there's nothing there to route to. If you want direct-writer routes (e.g. belairdirect, TD, Sonnet) or other aggregators (e.g. LowestRates.ca) checked, those still need to be added to market_registry.json with verified URLs/status before I can include them — I'm not substituting anything in their place. All input fields here read as ordinary planning_safe vehicle/coverage/licensing facts, nothing that looked like a name, DOB, licence number, VIN, or address, so nothing was flagged."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "manual_handoff",
+          "failure_reason": "Aborted by human: You chose to abort at a human checkpoint.",
+          "evidence": {
+            "timestamp": "2026-08-13T01:20:48.927Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/43d8ccf2-4532-4829-8e78-710310943dd5/1786584184489_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "manual_handoff",
+            "dedup_notes": "No duplicate concern — only one result returned this run; nothing to compare against for overlap.",
+            "outcome": {
+              "failure_reason": "recipe_did_not_complete",
+              "detail": "Route reached a human checkpoint and the applicant chose to abort rather than proceed. No quote was obtained — this is a process interruption, not an insurer decision (not a decline, not an 'unavailable' finding)."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-13T01:20:48.927Z",
+              "artifact_present": true
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "profile_label": "2025 Honda Civic LX 4dr (personal use)",
+        "summary_text": "Rates.ca didn't produce a quote this run. The route hit a human checkpoint mid-flow and you chose to abort there rather than continue — so this isn't Rates.ca declining or being unavailable, it's just an incomplete attempt. No premium, deductible info, discount confirmation, or coverage details were disclosed before the abort, so there's nothing to compare against the benchmark yet. A screenshot from the checkpoint was captured as evidence. Net result: 0 of 1 attempted routes reached a comparable quote this run — you'll need to re-run or manually push this one through if you want a Rates.ca number.",
+        "gaps": [
+          "Rates.ca: no quote obtained — aborted by human at a mid-route checkpoint, so status is manual_handoff, not a decline or unavailability finding.",
+          "No premium, deductible, discount, or additional-coverage information was disclosed by Rates.ca before the abort — coverage.deductible_match is 'not_disclosed' and discounts.disclosed is false, not confirmed zeros.",
+          "Only one route result was provided this run, so market_completion and comparable_quote_yield are both 0 — no cross-route comparison or duplicate-source check was possible yet.",
+          "Reason for the human abort (what the checkpoint was asking) wasn't included in this result payload, so it's not reflected here — worth checking what stopped the run before retrying."
+        ]
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9495,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2110,
+          "output_tokens_details": {
+            "thinking_tokens": 990
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr (personal use)",
+        "usage": {
+          "input_tokens": 6846,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1712,
+          "output_tokens_details": {
+            "thinking_tokens": 752
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 20163
+  }
+}

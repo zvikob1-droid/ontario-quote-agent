@@ -1,0 +1,272 @@
+{
+  "run_id": "run_1786583471611_mldad1",
+  "generated_at": "2026-08-13T01:11:42.244Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry currently marked active_mvp/verified. Broad aggregator panel, product_scope standard_PPA matches a personal-use new Honda Civic profile.",
+            "params": {
+              "vehicle_identity.model_year": 2025,
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": 20000,
+              "use.annual_kilometres": 8000,
+              "use.one_way_commute_distance": 0,
+              "use.use_type": "personal",
+              "current_insurance.first_insured_year": 2016,
+              "current_insurance.years_continuously_insured": 8,
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": 21,
+              "licensing_timeline.g1_date_or_year": 2014,
+              "licensing_timeline.g2_date_or_year": 2015,
+              "licensing_timeline.g_date_or_year": 2016,
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [
+          {
+            "registry_id": "aig",
+            "reason": "Not a resolved route in market_registry.routes — only appears in underwriting_groups_seed as a legal-entity list pending validation (specialty/commercial focus, PPA relevance unconfirmed)."
+          },
+          {
+            "registry_id": "allstate",
+            "reason": "Not a resolved route — seed entry only, direct/agent/broker channel split not yet validated into an actual quote_url/status entry."
+          },
+          {
+            "registry_id": "aviva",
+            "reason": "Not a resolved route — seed entry only, multiple legacy entities need dedupe before a route can be built."
+          },
+          {
+            "registry_id": "beneva",
+            "reason": "Not a resolved route — seed entry only (broker channel, unvalidated)."
+          },
+          {
+            "registry_id": "caa",
+            "reason": "Not a resolved route — seed entry only, CAA/Echelon channel split unvalidated."
+          },
+          {
+            "registry_id": "chubb",
+            "reason": "product_scope mismatch — high-net-worth/specialty broker, no signal this profile needs that, and also not a resolved route."
+          },
+          {
+            "registry_id": "co-op",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "commonwell",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "continental",
+            "reason": "product_scope mismatch — specialty/commercial, PPA relevance unconfirmed, also not a resolved route."
+          },
+          {
+            "registry_id": "definity",
+            "reason": "Not a resolved route — seed entry only (Definity broker / Sonnet direct channels unvalidated)."
+          },
+          {
+            "registry_id": "desjardins",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "economical",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "fa",
+            "reason": "Residual-market (Facility Association) route, not applicable to a standard-profile applicant and not a resolved route."
+          },
+          {
+            "registry_id": "fmre",
+            "reason": "Not a resolved route — mutual locator/validation still pending."
+          },
+          {
+            "registry_id": "gore",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "hartford",
+            "reason": "product_scope mismatch — specialty/commercial, also not a resolved route."
+          },
+          {
+            "registry_id": "heartland",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "intact",
+            "reason": "Not a resolved route — seed entry only; belairdirect/Intact/Jevco channel split unvalidated (note: when resolved, both belairdirect and Intact should be attempted independently since they price separately)."
+          },
+          {
+            "registry_id": "liberty",
+            "reason": "product_scope mismatch — specialty/commercial, also not a resolved route."
+          },
+          {
+            "registry_id": "northbridge",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "optimum",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "pure",
+            "reason": "product_scope mismatch — high-net-worth broker, also not a resolved route."
+          },
+          {
+            "registry_id": "peel",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "portage",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "sgi",
+            "reason": "Not a resolved route — seed entry only, Coachman non-standard scope unvalidated."
+          },
+          {
+            "registry_id": "sompo",
+            "reason": "product_scope mismatch — specialty/commercial, also not a resolved route."
+          },
+          {
+            "registry_id": "td",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "tokio",
+            "reason": "product_scope mismatch — specialty/commercial, also not a resolved route."
+          },
+          {
+            "registry_id": "travelers",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "wawanesa",
+            "reason": "Not a resolved route — seed entry only."
+          },
+          {
+            "registry_id": "xl",
+            "reason": "product_scope mismatch — specialty/commercial, also not a resolved route."
+          },
+          {
+            "registry_id": "zurich",
+            "reason": "Not a resolved route — Square One direct channel for Ontario auto unvalidated, still seed data."
+          }
+        ],
+        "notes": "Heads up: the market_registry currently only has ONE actual route entry (rates_ca, active_mvp). Everything else in the registry — Intact, Aviva, TD, Wawanesa, etc. — is just the underwriting_groups_seed list of legal entities/insurer groups pending validation into real routes (no quote_url, no status field, no distinct_rate_source_id). I did not fabricate routes for any of them; they're excluded as 'still unresolved in the registry,' not as a judgment on relevance. So this run will only attempt Rates.ca — a single aggregator data point, not a market-wide comparison yet. If you want broader coverage (e.g. LowestRates.ca, Kanetix, or direct insurer sites like belairdirect/TD/Intact), those need to be built out into registry route entries first before I can plan them. No overlap concern to manage this run since there's only one route."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"num-cancellations[0]\"][value=\"0\"]:visible')\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-13T01:11:42.250Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/e39e6a79-1eec-44ba-a3b9-9a057f7a0340/1786583597574_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "outcome": {
+              "failure_reason": "Worker timed out (20s) waiting for a 'number of cancellations' input on the live page mid-route. This is an automation stall, not a quote decision or market finding.",
+              "evidence_captured": true,
+              "artifact_timestamp": "2026-08-13T01:11:42.250Z"
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "Route did not reach a point where any coverage terms (liability limit, DCPD, deductible, endorsements) were confirmed or disclosed."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "dedup_notes": "Only result returned this run for this profile; no duplicate rate source to compare against."
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "Rates.ca didn't finish this run — the automation got stuck for 20 seconds waiting on a 'number of cancellations' field on the live page and gave up before quoting anything. That's a stall in the recipe, not an answer from the insurer/broker, so there's no premium, no confirmed coverage, and no discount info to report from this route at all. A screenshot was captured at the point of failure if you want to see what the page looked like when it hung.\n\nBottom line for this run: 0 of 1 planned routes actually produced a comparable quote. Nothing here is ready to compare yet — this needs either a recipe fix (the cancellations-count question likely needs a mapped/zero-default answer added to the static recipe) or a manual pass through Rates.ca to see what changed on their form.</summary_text>\n<parameter name=\"gaps\">[\n  \"rates_ca returned status 'unresolved' due to an automation timeout on a 'number of cancellations' input — the site was never actually queried for a premium.\",\n  \"No premium, deductible confirmation, additional coverage, or discount disclosure is available for rates_ca this run.\",\n  \"Market completion for this run is 0% — no other routes were included in this result set to compare against.\",\n  \"The 'number of cancellations' question needs to be added to the static recipe (likely a use_zero-style administrative default) so this route can get past it next run.\",\n  \"No duplicate-rate-source determination could be made since only one result exists in this run.\"\n]"
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9495,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 3600,
+          "output_tokens_details": {
+            "thinking_tokens": 840
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 6902,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1862,
+          "output_tokens_details": {
+            "thinking_tokens": 834
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 21859
+  }
+}

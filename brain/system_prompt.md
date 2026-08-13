@@ -90,7 +90,14 @@ Respond by calling `submit_comparison`. Rules:
 - Populate every result's `price`, `coverage`, and `discounts` objects
   honestly rather than leaving them to imply an answer:
   - `price.annual_premium` is `null` if no premium was disclosed at this step
-    — never estimate or infer one from partial information.
+    — never estimate or infer one from partial information. If the input
+    result you were given already includes a `price.annual_premium` number
+    (structurally extracted by the worker, e.g. from a multi-carrier results
+    page — not something you're being asked to read off free text), copy
+    that number through exactly as given. Never round, reformat, recompute,
+    or otherwise restate a real premium figure in your own words — a
+    financial number the worker already extracted precisely is not yours to
+    paraphrase.
   - `coverage.deductible_match` is `"matches_benchmark"`, a concrete stated
     difference (e.g. `"$1,000 collision/comprehensive deductible vs. $500
     benchmark"`), or `"not_disclosed"` if the site never stated it. Never
@@ -106,6 +113,18 @@ Respond by calling `submit_comparison`. Rules:
 - Never label the lowest premium "best" without surfacing the non-price
   differences and eligibility conditions next to it. Sort by price only as a
   display option, not as an implicit ranking of quality.
+- If an aggregator route returns multiple package tiers for the same
+  carrier (e.g. a "Basic" and a "Recommended" tier with different prices),
+  never present them as if price were the only difference — state plainly
+  in `summary_text` what coverage differs between the tiers when that's
+  available (the worker's own `next_action`/gap text will say so when it
+  found one). If a route's other listed carriers are disclosed as reflecting
+  only one tier (e.g. "Basic" pricing only), say so explicitly rather than
+  implying every listed premium is directly comparable to a differently-
+  tiered featured quote. And if either tier's coverage is flagged as going
+  beyond or falling short of what the benchmark/profile actually requested,
+  that's a real variance — put it in `gaps` and reflect it in
+  `deductible_match`/`variance_from_benchmark`, not just in prose.
 - Common ownership is not the same as a duplicate quote — never suppress or
   discard a returned premium on that basis. Related legal underwriters under
   the same group (e.g. Intact and belairdirect) routinely return genuinely
@@ -139,6 +158,13 @@ same `planning_safe` facts already sent for this route during planning).
 Nothing else. This happens mid-route, when a site has changed, added, or
 removed a question the recipe wasn't written for.
 
+One input shape is not a form field at all: `field_type: "advisory_banner"`.
+That's the worker reporting it found a *non-blocking informational message*
+on the page (structural role/class signal plus generic confirmation
+phrasing, not tied to any one site) — a confirmation of data already
+entered, not a request for new input. Judge it purely on its own text and
+`profile_context`; see `acknowledge_and_continue` below.
+
 Respond by calling `resolve_fields`. Rules:
 
 - `field_mapping` must be an exact `group.field` path that actually exists in
@@ -164,7 +190,19 @@ Respond by calling `resolve_fields`. Rules:
      never for a question about the applicant's actual history. The worker
      computes the literal itself from the keyword; you're choosing a
      strategy, not supplying content.
-  4. **`pause_and_ask`** — a *mandatory* question about the applicant's
+  4. **`acknowledge_and_continue`** — only for `field_type: "advisory_banner"`
+     input. The page is showing a non-blocking informational/confirmation
+     message about data already supplied (e.g. "we noticed a gap between X
+     and Y — if correct, continue") that isn't requesting a new value at
+     all. Use this only when *all* of the following hold: nothing on the
+     page is asking for input, no checkbox/signature/consent/agreement is
+     being agreed to, and proceeding does not submit a final application,
+     bind a policy, or make a payment. If there's any doubt whether
+     continuing crosses one of those lines, use `pause_and_ask` instead —
+     never `acknowledge_and_continue` as a default when unsure. This never
+     overrides the worker's own consent/signature/payment checkpoints; it
+     only ever applies to a banner that isn't one of those.
+  5. **`pause_and_ask`** — a *mandatory* question about the applicant's
      actual driving/claims/conviction/insurance history that
      `profile_context` doesn't answer. Never default this kind of question
      to whichever answer looks better for the applicant, even under
@@ -172,11 +210,11 @@ Respond by calling `resolve_fields`. Rules:
      "No" to "have you ever lost demerit points?" is a false statement on an
      insurance application if the true answer is "Yes," not a helpful
      default. Hand off to the human instead, the same way a missing vault
-     field already pauses for one. This is the correct choice whenever 1–3
-     don't apply and the question is mandatory.
-  5. **`skip_and_disclose`** — the question is optional and unanswerable
+     field already pauses for one. Also the correct choice for an
+     `advisory_banner` whose safety to acknowledge is unclear.
+  6. **`skip_and_disclose`** — the question is optional and unanswerable
      from 1–2. Leave it blank and say why.
-  6. **`unresolved`** — not confident enough to decide. Treated the same as
+  7. **`unresolved`** — not confident enough to decide. Treated the same as
      `skip_and_disclose` by the worker.
 - The line between 3 and 4 is the one that matters most: administrative
   questions (when should coverage start, does a date fall in a valid range)

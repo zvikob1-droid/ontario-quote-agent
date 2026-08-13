@@ -187,3 +187,28 @@ This mechanism is built and proven on `rates_ca.js` (the vehicle purchase-date v
 `use_today_date`); `use_inferred_value` and `pause_and_ask` are built and guardrail-tested but not
 yet exercised by a live recipe call site, and extending any of this to the other four recipes is
 the natural next step, not yet done — see `docs/KNOWN_LIMITATIONS.md`.
+
+**A second call site: selector rediscovery, not just value resolution.** The same live testing
+that proved the purchase-date case also surfaced a different shape of drift: Rates.ca's driver
+licence-type question is worded `"What type of licence does <the driver's own first name>
+currently hold?"` once a name is filled in, not a static placeholder — a plain text-match selector
+written before that was known assumed literal text ("Driver") that never appears. That's not a
+values question (the recipe already knows the right answer); it's the DOM element itself moving out
+from under a fixed selector, the same failure class §7.5's intro already names ("a submit button
+gated on an event a library method doesn't fire, a question quietly removed from a page"). Rather
+than hand-patch each occurrence as it's found live, `fillPlanningResilient`/
+`selectPlanningResilient` (`worker/lib/recipe_lib.js`) wrap the normal fill/select call: on a
+timeout for a field the recipe already has a schema mapping for, `rediscoverSelector` scans the
+page's own currently-visible labels/field-types/options (`scanVisibleFormQuestions` — structure
+only, exactly the same shape sent everywhere else in this mechanism, never a value) and runs them
+through the *same* `resolveFieldsWithBrain` call and guardrails already described above, asking
+which candidate (if any) maps back to the schema field the recipe was already trying to fill. If
+one matches, the recipe retries once against that candidate's own label; if nothing resolves (n8n
+not configured, no confident match, or the output guardrail discards an answer that doesn't match
+the field actually asked about), the original error propagates unchanged — this is a resilience
+layer on top of the existing static selector, not a silent skip or a second way to guess a value.
+Guardrail-tested (happy path, no-n8n-configured fallback, full round trip, and a rejected-mismatched-
+mapping case) via a throwaway script before being wired into `rates_ca.js`'s licence-class selector
+as defense-in-depth alongside the direct substring fix; not yet exercised by an actual live
+selector failure (today's fix was resolved by the substring correction itself, so this fallback's
+live trigger path is still unproven end-to-end against a real site).

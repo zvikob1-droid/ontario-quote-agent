@@ -1,0 +1,163 @@
+{
+  "run_id": "run_1786586682055_lvuont",
+  "generated_at": "2026-08-13T02:05:04.534Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry marked active/verified (active_mvp). Broad aggregator panel plausibly fits this standard personal-use daily-driver profile (new, owned, personal use, standard PPA coverage).",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Only one route currently exists in market_registry.json with a resolvable status: rates_ca (active_mvp). The long underwriting_groups_seed list (Aviva, Intact, TD, Wawanesa, etc.) is exactly that — a seed list of insurer groups/legal entities for future route-building, not actual registry route entries with quote URLs, automation notes, or verified status. None of them have a registry_id I can plan against yet, so I can't send this profile to Intact/belairdirect, TD, Aviva, etc. directly — that requires those routes to actually get built and verified in the registry first. Flagging this so you know today's run is Rates.ca only, not a full market sweep, and that \"8 markets checked\" type language would be inflated for this run.\n\nNo postal FSA was included in this profile's fields at all (only vehicle/coverage/licensing/ownership/use info) — Rates.ca may prompt for it live; that's a worker-side field-resolution matter, not something I can supply here.\n\nNo sensitive-looking values (names, DOB, licence number, VIN, full address, phone/email) were present in the input — everything mapped cleanly to planning_safe intake fields, so no anomaly flag needed for this run."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "quoted_non_comparable",
+          "failure_reason": null,
+          "outcome": {
+            "exact_quote_or_estimate": "quote",
+            "eligibility_result": "returned_a_result_page",
+            "next_action": "Capture the actual returned premiums/underwriters from the Your Quotes page — this recipe stops at detecting a successful submission and has not yet been extended to parse the results table itself. The winter tires discount question no longer appears on Rates.ca's Vehicle Info page (confirmed absent, not just an automation gap) — winter tire status could not be communicated to this site. The site showed new advisory text not tied to a known field - acknowledged and continued: This banner just restates the vehicle year/make/model/trim already on file, confirming data already supplied rather than requesting anything new.. The site showed new advisory text that wasn't confidently auto-acknowledged (pause_and_ask) - This banner presents an estimated annual mileage figure that would effectively become a factual claim about the applicant's actual driving usage; profile_context has no confirmed annual kilometers value, so accepting or continuing past this estimate should be a human decision rather than an automatic acknowledgment.. G licence date: only a year was on file (no month), so the month field was left at the site's own default and only the year was set. The driver education discount question was not visible for this profile (Rates.ca shows it conditionally) — could not communicate driver training status to this site. The site showed new advisory text not tied to a known field - acknowledged and continued: Non-blocking informational banner noting a gap between licensing and insurance start dates, asking only to confirm and continue — not requesting new input, consent, or a binding action.."
+          },
+          "evidence": {
+            "timestamp": "2026-08-13T02:05:04.538Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/11a97d05-d6d1-4ece-b427-0943d8775b97/1786586822571_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "gaps": [
+          "Rates.ca: the worker's recipe currently stops at detecting a successful form submission — it hasn't been extended to parse the actual Your Quotes results table, so no premium, underwriter, or returned coverage terms exist for this result. This is an automation gap, not evidence the insurer declined or the quote was unfavorable.",
+          "Rates.ca no longer shows a winter tires discount question on its Vehicle Info page, so the requested winter_tires discount could not be communicated to this insurer for this run.",
+          "Rates.ca's driver education discount question wasn't shown for this profile (site shows it conditionally), so driver training status also couldn't be communicated.",
+          "Rates.ca displayed an estimated annual mileage figure in an advisory banner. Since profile_context has no confirmed annual kilometers value, the worker correctly paused rather than confirming an unverified usage figure — this is still an open question for the applicant to resolve before the quote can be considered accurate.",
+          "G licence date on Rates.ca: only the year was on file, so the month field was left at the site's default — worth double-checking this doesn't skew the eligibility calculation.",
+          "Only one route (Rates.ca) has reported results for this run so far; no market-completion picture exists yet beyond it."
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "outcome": {
+              "exact_quote_or_estimate": "quote",
+              "eligibility_result": "returned_a_result_page",
+              "note": "Site returned a Your Quotes results page, but the worker's recipe stops at detecting successful submission and has not yet been extended to parse the results table itself. No premium or underwriter data was actually captured, so this cannot yet be scored as comparable or non-comparable to benchmark — it's an implementation gap, not a market finding."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "Quote results page was reached but coverage terms (liability limit, DCPD, accident benefits, own-damage deductible, endorsements) were not captured by this recipe — unknown, not confirmed matching or differing.",
+                "Winter tires discount request from benchmark could not be communicated to Rates.ca — the site no longer presents that question on its Vehicle Info page.",
+                "Driver education discount status could not be communicated — question not shown for this profile.",
+                "An annual mileage estimate was presented by the site via an advisory banner and left unconfirmed (paused for human input) rather than accepted automatically."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "dedup_notes": "Only one result for this route this run; no other route data to compare against, so no duplicate assessment possible yet.",
+            "evidence": {
+              "timestamp": "2026-08-13T02:05:04.538Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/11a97d05-d6d1-4ece-b427-0943d8775b97/1786586822571_final.png"
+            }
+          }
+        ],
+        "summary_text": "Rates.ca is the only route reported this run, and it doesn't yet give you a usable number. The worker successfully got through the form and Rates.ca returned a results page, but the automation stops right there — it hasn't been built out to actually read the premium, underwriter, or coverage terms off that page yet. So there's no annual premium, no deductible confirmation, and no discount confirmation to show you: all of that is genuinely unknown at this step, not zero or declined.\n\nTwo things also didn't make it into the submission the way you'd want:\n- The winter tires discount you asked to have requested couldn't be communicated to Rates.ca — that question has been removed from their Vehicle Info page.\n- An annual mileage figure the site estimated on its own was left unconfirmed rather than accepted automatically, since there's no confirmed mileage value on file for you — that's sitting as an open item for you to check.\n\nBottom line: this isn't a quote you can compare yet. The concrete next step is extending the Rates.ca recipe to actually parse its results table — until then, market completion for this run is effectively 0%."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9495,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2182,
+          "output_tokens_details": {
+            "thinking_tokens": 968
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 7354,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 5805,
+          "output_tokens_details": {
+            "thinking_tokens": 4207
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 24836
+  }
+}

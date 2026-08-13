@@ -1,0 +1,150 @@
+{
+  "run_id": "run_1786581743242_1km4a9",
+  "generated_at": "2026-08-13T00:42:43.094Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry currently marked active/verified (status: active_mvp) and product_scope standard_PPA fits this daily-driver personal-use profile.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Only one route in the registry (rates_ca) currently carries status active_mvp / has a real quote_url and last_verified_at — that's the only thing I can plan against this run. The registry's underwriting_groups_seed lists ~30 insurer groups (Aviva, Intact/belairdirect, TD, Wawanesa, Definity/Sonnet, etc.) but none of them have a corresponding entry in the routes[] array yet — no registry_id, no quote_url, no verification status — so there's nothing concrete there to route to or exclude by ID. I'm not substituting anything for them. If you want broader market coverage than Rates.ca alone, those insurer groups need to go through registry validation (confirm PPA relevance, dedupe legacy/affinity entities, assign a distinct_rate_source_id) before I can plan routes against them. Flagging this as a real coverage gap rather than quietly shipping a one-route plan and calling it done."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"num-cancellations[0]\"][value=\"0\"]:visible')\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-13T00:42:43.099Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/0dcc1f12-0814-4a69-bf1e-60d1fbc7b4ad/1786581813929_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "Only one result returned this run — nothing to dedupe against.",
+            "outcome": {
+              "description": "Route did not complete. The automation timed out (20s) waiting for a page element tied to a 'number of cancellations' history question — this is a stalled/incomplete automation run, not a declined or not-offered quote from the insurer/aggregator.",
+              "failure_reason": "page.click: Timeout 20000ms exceeded waiting for locator('input[name=\"num-cancellations[0]\"][value=\"0\"]:visible')"
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-13T00:42:43.099Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/0dcc1f12-0814-4a69-bf1e-60d1fbc7b4ad/1786581813929_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "No comparable quote yet for the 2025 Honda Civic LX 4dr this run. Rates.ca was the only route attempted, and it stalled mid-form — the automation timed out waiting on a 'number of cancellations' radio button that never became clickable within 20 seconds. That's a technical/automation snag, not the insurer declining or quoting you; treat it as unresolved, not as market data. No premium, deductible, discount, or coverage info was disclosed before the failure. A screenshot of the stall point was captured for review. Nothing to compare side-by-side yet since this is the only result in — will need a retry (and ideally other routes queried too) before there's an actual market picture.",
+        "gaps": [
+          "rates_ca did not produce a quote this run — it timed out on a cancellations-history form step before reaching pricing.",
+          "No other routes were attempted/returned in this run, so there is no cross-market comparison yet for this profile.",
+          "Coverage match, deductible, and discount status for rates_ca are all unknown (not_disclosed) — the route never got far enough to surface them.",
+          "The timeout suggests the static recipe for rates_ca may need updating to handle this cancellations question reliably."
+        ]
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9495,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1958,
+          "output_tokens_details": {
+            "thinking_tokens": 849
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 6906,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2084,
+          "output_tokens_details": {
+            "thinking_tokens": 1000
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 20443
+  }
+}

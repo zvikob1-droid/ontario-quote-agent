@@ -1,0 +1,149 @@
+{
+  "run_id": "run_1786578723174_9czc38",
+  "generated_at": "2026-08-12T23:52:23.339Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr (personal, owned, new)",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr (personal, owned, new)",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the market registry marked active/verified (active_mvp) with product_scope standard_PPA matching this profile. Broad aggregator panel, no overlap concerns since it's the sole planned route.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Heads up: the market registry currently only has ONE route with an actual registry_id and verified/active status — rates_ca (the MVP aggregator route). Everything else in the input (AIG, Allstate, Aviva, Beneva, CAA, Chubb, Co-op, Commonwell, Continental, Definity, Desjardins, Economical, FA, FMRe, Gore, Hartford, Heartland, Intact, Liberty, Northbridge, Optimum, PURE, Peel, Portage, SGI, Sompo, TD, Tokio, Travelers, Wawanesa, XL, Zurich) is listed under 'underwriting_groups_seed' — that's seed/reference data for future route-building, not a runnable, registry-verified route. None of them have a registry_id, a quote_url, a status, or automation notes yet, so I can't plan attempts against them without silently inventing routes that don't exist in the registry. This run will only attempt rates_ca. If you want broader panel coverage (e.g. direct writers like belairdirect, TD, Wawanesa broker route, etc.), those need to be built out and verified in the registry first — flagging that gap here rather than pretending this run covered them.\n\nProfile fits rates_ca's standard_PPA scope cleanly (2025 Honda Civic LX, personal use, owned/new, standard mandatory coverage + OPCF44R + winter tire discount request) — no high-net-worth, collector, or non-standard signals that would justify or require a different scope.\n\nAll input fields matched expected planning_safe intake schema categories (vehicle identity, ownership, use, licensing timeline as years/ages only, coverage configuration) — nothing that looked like a name, DOB, address, licence number, or VIN, so no anomaly flags needed this run."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.selectOption: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('label:has-text(\"What type of licence does Driver\") ~ select:visible')\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-12T23:52:23.343Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/5bd20199-965e-4cb8-a568-22c8168a629e/1786578801612_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "gaps": [
+          "Rates.ca did not return a quote this run — the automation timed out waiting for a 'driver licence type' dropdown to appear, so no comparison data exists for this route.",
+          "Only one route (Rates.ca) was included in this batch of results; no other market data was supplied to compare against for this profile, so market coverage for this run is effectively zero.",
+          "This is a technical/automation failure, not a market finding — it does not mean Rates.ca declined or doesn't offer this coverage. The recipe needs to be checked against the current live page (the licence-type question may have changed wording, options, or timing)."
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "profile_label": "2025 Honda Civic LX 4dr (personal, owned, new)",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "No duplicate concern — this is the only result returned this run.",
+            "outcome": {
+              "failure_reason": "recipe_incomplete_or_page_changed",
+              "detail": "Automation timed out (20s) waiting for a 'What type of licence does Driver ___ have?' dropdown to become selectable. This is an implementation gap in the current recipe — the site was not actually queried to completion, so no market signal (quoted, declined, or otherwise) can be inferred from this."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-12T23:52:23.343Z",
+              "artifact_ref": "worker/evidence/rates_ca/5bd20199-965e-4cb8-a568-22c8168a629e/1786578801612_final.png"
+            }
+          }
+        ],
+        "summary_text": "Short version: no usable quote this run. Rates.ca stalled — the automation hit a licence-type dropdown it couldn't confirm was ready within 20 seconds, and timed out before submitting anything further. That means Rates.ca never actually finished processing your profile; this is not a decline, not a \"not offered,\" and not a price — it's an automation gap that needs the recipe checked against the current live page (the question wording or timing may have changed).\n\nSince this is the only result in the batch, there's nothing to compare side-by-side yet — market completion for this run is 0%. I'd recommend re-running once the recipe is fixed, and ideally lining up at least one more independent route (e.g. a direct insurer or a different aggregator) so there's something to actually compare Rates.ca against when it does return."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9059,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2002,
+          "output_tokens_details": {
+            "thinking_tokens": 587
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr (personal, owned, new)",
+        "usage": {
+          "input_tokens": 6471,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1534,
+          "output_tokens_details": {
+            "thinking_tokens": 507
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 19066
+  }
+}

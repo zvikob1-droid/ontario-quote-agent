@@ -92,6 +92,23 @@ challenge brief's requirement to state gaps rather than imply full coverage.
     (there's no ambiguity to resolve there — the field either exists or doesn't). Extending this to
     the other recipes, and to a more general "sweep whatever the static pass didn't handle" pattern
     rather than a few hand-picked call sites, is the honest remaining next step.
+  - **Also built this cycle: brain-assisted selector rediscovery, a second call site for a
+    different failure shape.** Live testing surfaced a case the mechanism above doesn't cover — not
+    "what value answers this question" but "this known field's selector stopped finding its
+    element" (Rates.ca's licence-type question is worded with the driver's own first name once
+    entered, not the static placeholder text a selector was originally written against).
+    `fillPlanningResilient`/`selectPlanningResilient` (`worker/lib/recipe_lib.js`) wrap the normal
+    fill/select call: on a timeout, they scan the page's own current labels/types/options (never a
+    value) and reuse the exact same `resolveFieldsWithBrain` call and guardrails to ask which
+    candidate, if any, maps back to the field being filled — retrying once if something matches,
+    otherwise letting the original error through unchanged. Guardrail-tested end-to-end via a
+    throwaway script (happy path, no-n8n-configured fallback, full round trip, and a rejected
+    wrong-field-mapping case) and wired into `rates_ca.js`'s licence-class selector as
+    defense-in-depth. **Honest gap:** tonight's actual failure was fixed directly (the selector's
+    text match was corrected once the real live wording was known), so this fallback's live trigger
+    path — a real selector timeout resolved via an actual n8n round trip against a real page — is
+    still proven only against mocks, not a real site. The other four recipes don't use it yet
+    either.
 - **CAPTCHA / bot-detection.** A site that presents a CAPTCHA pauses the recipe (`lib.pauseForHuman()`)
   and hands off to me to solve it myself in the browser window — see `docs/ARCHITECTURE.md` §5.
   The recipe never solves or automates past one. A hard bot-detection wall with no human-solvable

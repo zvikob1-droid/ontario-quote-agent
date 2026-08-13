@@ -256,8 +256,15 @@ module.exports = {
       await lib.fillPlanning(page, 'label:has-text("How old were you when you got your G license") ~ input', String(params['licensing_timeline.first_licensed_age']));
     }
     if (params['licensing_timeline.g_date_or_year']) {
-      const [gMonth] = String(params['licensing_timeline.g_date_or_year']).split('-');
-      if (gMonth) await page.locator('label:has-text("Select the month you got this license") ~ select').first().selectOption({ index: Number(gMonth) }).catch(() => {});
+      // Field name is "_date_or_year" deliberately - a bare 4-digit year is
+      // valid input, not just "MM-YYYY". Splitting on "-" alone treated a
+      // bare year as the month index, silently no-opping via the .catch()
+      // below rather than actually selecting a month. Only attempt the
+      // month select when a real month is actually present.
+      const monthYearMatch = String(params['licensing_timeline.g_date_or_year']).match(/^(\d{1,2})-\d{4}$/);
+      if (monthYearMatch) {
+        await page.locator('label:has-text("Select the month you got this license") ~ select').first().selectOption({ index: Number(monthYearMatch[1]) }).catch(() => {});
+      }
     }
     await page.click('text=Next');
 

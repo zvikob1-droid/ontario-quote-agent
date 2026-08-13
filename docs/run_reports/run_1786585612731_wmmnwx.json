@@ -1,0 +1,153 @@
+{
+  "run_id": "run_1786585612731_wmmnwx",
+  "generated_at": "2026-08-13T01:47:11.921Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry with status active_mvp and a broad panel; product_scope standard_PPA matches this personal-use daily-driver Civic profile.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": 2025,
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": 20000,
+              "use.annual_kilometres": 8000,
+              "use.one_way_commute_distance": 0,
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": 21,
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": 8,
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "The market_registry's `routes` array only contains one entry — rates_ca (active_mvp) — so that's the only route I can plan against right now. The long `underwriting_groups_seed` list is background/reference data on insurer legal entities, not actual resolvable routes (no quote_url, status, or distinct_rate_source_id for any of them), so I'm not treating any of them as excluded routes — there's nothing yet to exclude, they're simply not built out as routes in the registry. If you want direct-writer coverage (e.g. belairdirect, TD, Sonnet, Co-operators) or a second aggregator (LowestRates.ca) checked, those need to be added to the registry with their own registry_id/status before I can plan a route for them — right now this run will only reach whatever panel Rates.ca's aggregator surfaces. All fields I received for this profile (vehicle year/make/model, coverage config, use/ownership facts, licence class/status, and year-level licensing/insurance history) read as planning_safe per the schema — nothing here looked like a name, DOB, address, or licence/policy number, so no anomaly flags this run."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "manual_handoff",
+          "failure_reason": null,
+          "outcome": {
+            "next_action": "The page navigated away during or after a human checkpoint on the Vehicle Info page, meaning the rest of the flow was driven manually rather than by the recipe. Automation stopped here rather than running stale scripted steps against a page that has moved on - check the browser window directly for whatever was reached."
+          },
+          "evidence": {
+            "timestamp": "2026-08-13T01:47:11.925Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/ea346955-1794-4d1a-b748-68fd22d86bd6/1786585672596_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "gaps": [
+          "Rates.ca route did not complete: automation stopped after a human checkpoint on the Vehicle Info page and the rest of the flow was driven manually, so no quote was actually reached by the recipe.",
+          "No premium was disclosed for this route — annual_premium is null, not an estimate.",
+          "No coverage details (deductible, endorsements, additional coverage) were confirmed for this route — 'not_disclosed'/empty here means unknown, not 'matches benchmark'.",
+          "No discount information was surfaced at this step, so we can't say whether winter tire discount was applied.",
+          "This run only has one result overall — no other market registry routes were reported, so no cross-route comparison or dedup analysis was possible."
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "manual_handoff",
+            "dedup_notes": "Only result in this run — no overlap or duplicate concern applies. Not comparable to a benchmark quote since no quote was reached.",
+            "outcome": {
+              "next_action": "The page navigated away during or after a human checkpoint on the Vehicle Info page, meaning the rest of the flow was driven manually rather than by the recipe. Automation stopped here rather than running stale scripted steps against a page that has moved on — check the browser window directly for whatever was reached."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": []
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-13T01:47:11.925Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/ea346955-1794-4d1a-b748-68fd22d86bd6/1786585672596_final.png"
+            }
+          }
+        ],
+        "summary_text": "Rates.ca didn't produce a quote this run. The recipe hit a human checkpoint on the Vehicle Info page, the site then navigated on, and automation correctly stopped rather than keep clicking through with a stale script — so this went to manual handoff instead of running blind. There's a screenshot saved from that moment if you want to see exactly where it stopped and pick up the flow yourself in the browser.\n\nBottom line: no premium, no coverage confirmation, no discount info for this route — all of that is genuinely unknown right now, not \"none found.\" This run only returned this one result, so there's nothing yet to compare it against or de-duplicate. Market completion for this run is 0/1 — one route attempted, zero completed quotes."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9495,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1762,
+          "output_tokens_details": {
+            "thinking_tokens": 662
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 6934,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1794,
+          "output_tokens_details": {
+            "thinking_tokens": 719
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 19985
+  }
+}

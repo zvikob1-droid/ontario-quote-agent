@@ -1,0 +1,280 @@
+{
+  "run_id": "run_1786584524613_65h3vb",
+  "generated_at": "2026-08-13T01:29:07.706Z",
+  "profiles": [
+    {
+      "label": "My vehicle - 2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "My vehicle - 2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the registry currently marked active_mvp/verified. Broad panel aggregator, product_scope standard_PPA fits this daily-driver personal-use Civic profile.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [
+          {
+            "registry_id": "aig",
+            "reason": "Not present in registry/market_registry.json routes list — only appears in underwriting_groups_seed as a legal entity reference, no verified quote route/status/URL defined yet."
+          },
+          {
+            "registry_id": "allstate",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "aviva",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "beneva",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "caa",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "chubb",
+            "reason": "Seed-only; also product_scope would need validation as high_net_worth/specialty before considering for this standard profile."
+          },
+          {
+            "registry_id": "co_op",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "commonwell",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "continental",
+            "reason": "Seed-only; specialty/commercial scope, not validated for standard PPA."
+          },
+          {
+            "registry_id": "definity",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "desjardins",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "economical",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "fa_facility_association",
+            "reason": "Seed-only; also residual-market route not applicable — profile shows no signal of non-standard risk."
+          },
+          {
+            "registry_id": "fmre_ontario_mutuals",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "gore",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "hartford",
+            "reason": "Seed-only; specialty/commercial scope, not validated for standard PPA."
+          },
+          {
+            "registry_id": "heartland",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "intact",
+            "reason": "Same as above: seed-only entity list (incl. belairdirect), no active route defined in registry yet — worth adding once verified, since Intact and belairdirect price independently."
+          },
+          {
+            "registry_id": "liberty",
+            "reason": "Seed-only; specialty/commercial scope, not validated for standard PPA."
+          },
+          {
+            "registry_id": "northbridge",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "optimum",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "pure",
+            "reason": "Seed-only; high_net_worth scope, no signal in this profile that it applies."
+          },
+          {
+            "registry_id": "peel",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "portage",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "sgi",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "sompo",
+            "reason": "Seed-only; specialty/commercial scope, not validated for standard PPA."
+          },
+          {
+            "registry_id": "td",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "tokio",
+            "reason": "Seed-only; specialty/commercial scope, not validated for standard PPA."
+          },
+          {
+            "registry_id": "travelers",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "wawanesa",
+            "reason": "Same as above: seed-only entity list, no active route defined in registry yet."
+          },
+          {
+            "registry_id": "xl",
+            "reason": "Seed-only; specialty/commercial scope, not validated for standard PPA."
+          },
+          {
+            "registry_id": "zurich",
+            "reason": "Seed-only; Square One route noted but not built out as an active registry route yet."
+          }
+        ]
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"num-cancellations[0]\"][value=\"0\"]:visible')\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-13T01:29:07.711Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/f2d4f3a5-ebf1-400b-92b8-782c031e1a25/1786584750895_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "My vehicle - 2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "outcome": {
+              "summary": "Route did not complete. The worker hit a technical timeout waiting for a page element (a 'number of cancellations' radio button) that never became visible/clickable within 20 seconds. This is an implementation/automation failure, not a quote the insurer actually returned or declined — Rates.ca was never actually queried to completion.",
+              "failure_reason": "page.click: Timeout 20000ms exceeded — waiting for locator('input[name=\"num-cancellations[0]\"][value=\"0\"]:visible')"
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "No coverage details were disclosed — the route stalled before reaching a quote page, so nothing can be compared to the benchmark yet."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-13T01:29:07.711Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/f2d4f3a5-ebf1-400b-92b8-782c031e1a25/1786584750895_final.png"
+            },
+            "dedup_notes": "Only one result returned for this run — no duplicate or overlapping route to reconcile against."
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "Just one route came back this run — Rates.ca — and it didn't produce a quote. The automation got stuck on a page question about number of cancellations (a checkbox/radio the recipe expected to find and click, timing out after 20 seconds). That's a technical snag in the run, not Rates.ca actually declining or pricing you — treat it as 'we don't know yet,' not 'no good.' No premium, no coverage terms, and no discount info were disclosed before it stalled, so there's nothing to compare to your benchmark (2M liability, $500 deductible, OPCF44R, winter tire discount) yet. A screenshot from the moment of failure is saved for review. Nothing to report as a market finding here — this one needs a recipe fix or a retry.",
+        "gaps": [
+          "Rates.ca did not complete: automation timed out on a 'number of cancellations' form control, so no quote was reached — this is unresolved, not a decline or a real price.",
+          "No premium, coverage, or discount information is available from this run for comparison against the benchmark.",
+          "Only one route was attempted/returned in this batch — no other market results to compare against for this profile yet.",
+          "The recipe for Rates.ca likely needs updating to handle this cancellations question before this route can be retried successfully."
+        ]
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9495,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2809,
+          "output_tokens_details": {
+            "thinking_tokens": 500
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:My vehicle - 2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 6910,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2248,
+          "output_tokens_details": {
+            "thinking_tokens": 1054
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 21462
+  }
+}

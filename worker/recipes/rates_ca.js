@@ -52,16 +52,18 @@
  *      skipping gracefully and noting the gap rather than failing the route.
  *   3. Driver Info: "First name", "Last name", "Date of birth" (one label,
  *      three selects by position), "Gender", "Marital status",
- *      "Occupational status", "What type of licence does Driver #1
- *      currently hold?", "Did Driver #1 previously hold a full licence
- *      elsewhere in Canada or the U.S.?", "How old was Driver #1 when he or
- *      she was first licensed in Ontario?", "G licence date" (one label,
- *      two selects), then "When was [name] first listed as a driver on an
- *      insurance policy..." and "How long has [name] been with their
- *      current insurance company?" — both labels are dynamically generated
- *      to include the entered first name, so matched here on a stable
- *      substring rather than the full text. has-driver-education0 is
- *      CONFIRMED conditionally hidden (its container is display:none until
+ *      "Occupational status", "What type of licence does [name] currently
+ *      hold?", "Did [name] previously hold a full licence elsewhere in
+ *      Canada or the U.S.?", "How old was [name] when he or she was first
+ *      licensed in Ontario?", "G licence date" (one label, two selects),
+ *      then "When was [name] first listed as a driver on an insurance
+ *      policy..." and "How long has [name] been with their current
+ *      insurance company?" — CONFIRMED LIVE: all of these labels are
+ *      dynamically generated to include the entered first name once it's
+ *      filled (not a static "Driver #1" placeholder as first assumed), so
+ *      every one is matched here on a stable substring rather than the full
+ *      text. has-driver-education0 is CONFIRMED conditionally hidden (its
+ *      container is display:none until
  *      some other condition is met, not simply absent) — kept id-based with
  *      a graceful skip, unlike winter-tires which is confirmed genuinely
  *      gone. The cancellations/suspensions/accidents/tickets history
@@ -135,8 +137,233 @@ async function pickBestModelOption(page, requestedModel) {
   if (!result) {
     throw new Error(`No vehicle-model option matches even the base model name in "${requestedModel}" — model list may have changed.`);
   }
-  await page.selectOption('label:has-text("Vehicle model") ~ * select:visible, label:has-text("Vehicle model") ~ select:visible', result.value);
+  const selector = 'label:has-text("Vehicle model") ~ * select:visible, label:has-text("Vehicle model") ~ select:visible';
+  await page.selectOption(selector, result.value);
+
+  // Confirmed live: on a bounded-attempt retry pass (the whole recipe
+  // re-running on the same page after an earlier failure), this selection
+  // can get silently reset moments later - plausibly the site re-populating
+  // the model list right after the Make change fires, racing this call. A
+  // single selectOption isn't enough to trust here; re-read the live value
+  // after a brief settle and reselect once if the site reset it.
+  await page.waitForTimeout(300);
+  const currentValue = await page.evaluate(() => {
+    const labels = Array.from(document.querySelectorAll('label')).filter((l) => l.textContent.trim() === 'Vehicle model');
+    const label = labels.find((l) => l.closest('div')?.querySelector('select')?.offsetParent !== null) || labels[0];
+    const el = label ? label.closest('div')?.querySelector('select') : null;
+    return el ? el.value : null;
+  });
+  if (currentValue !== result.value) {
+    await page.selectOption(selector, result.value);
+  }
+
   return result;
+}
+
+// Confirmed live in the underwriter-logo footer shown throughout the
+// quoting flow ("Compare car insurance from companies you trust") - the
+// panel this site draws from. Used to recognize a carrier name next to a
+// price on the results page; not exhaustive of every possible underwriter
+// Rates.ca could ever return, so a carrier outside this list would be
+// missed rather than mismatched - an honest gap, not a wrong result.
+const KNOWN_CARRIER_NAMES = [
+  'CAA', 'SGI Canada', 'SGI', 'Aviva', 'Sonnet', 'Economical', 'Pembridge',
+  'Gore Mutual', 'Wawanesa', 'Definity', 'Intact', 'belairdirect',
+  'TD Insurance', 'TD', 'Desjardins', 'Optimum', 'Travelers', 'Chubb',
+  'Co-operators', 'Co-op', 'Northbridge', 'Portage', 'Heartland',
+];
+
+function parsePremiumToAnnual(text) {
+  const numMatch = text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
+  if (!numMatch) return null;
+  const amount = parseFloat(numMatch[1].replace(/,/g, ''));
+  if (Number.isNaN(amount)) return null;
+  const isMonthly = /\/\s*(month|mo)\b/i.test(text);
+  return Math.round(isMonthly ? amount * 12 : amount);
+}
+
+/**
+ * Best-effort extraction of the multi-carrier breakdown Rates.ca's "Your
+ * Quotes" results page returns (confirmed live: a "Basic"/"Recommended"
+ * package pair from one carrier at the top, then an "Other Basic Quotes"
+ * list below with one premium per carrier). Confirmed live: carrier names
+ * on this page render as logo images, not plain text - an earlier version
+ * of this function scanned only visible text and found nothing at all, an
+ * empty-handed but honest result rather than a wrong one. This version
+ * anchors on either a text match OR an <img> whose alt/title/src names a
+ * known carrier, then walks up a bounded number of ancestors from that
+ * anchor looking for the nearest price - matching the actual logo-next-to-
+ * price layout confirmed live, rather than assuming carrier name and price
+ * always share one text node. Still a generic heuristic, not a selector
+ * built against a captured DOM - returns an empty array rather than
+ * guessing if nothing matches, since a wrong number is worse than none for
+ * a real financial figure.
+ */
+async function extractCarrierQuotes(page) {
+  const raw = await page.evaluate((carrierNames) => {
+    const isVisible = (el) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    // Confirmed live: exact word-boundary matching missed real cases -
+    // a logo src slug uses hyphens ("gore-mutual.svg"), and this site's own
+    // stylized display text splits "Pembridge" into "PEM BRIDGE". Comparing
+    // with whitespace/hyphens/underscores stripped from both sides catches
+    // both without needing to hardcode every stylistic variant.
+    const normalize = (s) => (s || '').toLowerCase().replace(/[\s\-_]+/g, '');
+    const matchesCarrier = (text) => {
+      const normText = normalize(text);
+      if (!normText) return null;
+      return carrierNames.find((c) => normText.includes(normalize(c))) || null;
+    };
+    const priceRe = /\$\s*[\d,]+(?:\.\d{2})?(?:\s*\/\s*(?:year|yr|month|mo))?/i;
+
+    const imgAnchors = Array.from(document.querySelectorAll('img'))
+      .filter(isVisible)
+      .map((el) => ({
+        el,
+        carrierName: matchesCarrier(el.getAttribute('alt')) || matchesCarrier(el.getAttribute('title')) || matchesCarrier(el.getAttribute('src') || ''),
+      }))
+      .filter((a) => a.carrierName);
+
+    const textAnchors = Array.from(document.querySelectorAll('div, span, p, a, li, h1, h2, h3, h4'))
+      .filter(isVisible)
+      .filter((el) => el.children.length === 0)
+      .map((el) => ({ el, carrierName: matchesCarrier(el.textContent) }))
+      .filter((a) => a.carrierName);
+
+    const results = [];
+    const usedRows = new Set();
+    for (const anchor of [...imgAnchors, ...textAnchors]) {
+      let node = anchor.el;
+      let priceText = null;
+      let rowMarker = null;
+      for (let depth = 0; depth < 8 && node; depth += 1) {
+        const m = (node.textContent || '').match(priceRe);
+        if (m) {
+          priceText = m[0];
+          rowMarker = node;
+          break;
+        }
+        node = node.parentElement;
+      }
+      if (!priceText || !rowMarker || usedRows.has(rowMarker)) continue;
+      usedRows.add(rowMarker);
+
+      // The two featured package cards at the top of this site are each
+      // labelled "Basic Coverage"/"Recommended Coverage" - bounded ancestor
+      // check from the row itself, not a page-wide search, so an unrelated
+      // mention elsewhere on the page doesn't mis-tag every entry. The
+      // "Other Basic Quotes" list below never matches either label within
+      // this bounded distance - it's tagged 'basic' afterward instead,
+      // matching that section's own heading.
+      let packageTier = null;
+      let checkNode = rowMarker;
+      for (let d = 0; d < 4 && checkNode; d += 1) {
+        const t = checkNode.textContent || '';
+        if (/\brecommended\b/i.test(t)) { packageTier = 'recommended'; break; }
+        if (/\bbasic\b/i.test(t)) { packageTier = 'basic'; break; }
+        checkNode = checkNode.parentElement;
+      }
+
+      results.push({ underwriter: anchor.carrierName, price_text: priceText, package_tier: packageTier });
+    }
+
+    const seen = new Set();
+    const out = [];
+    for (const r of results) {
+      const key = `${r.underwriter.toLowerCase()}|${r.price_text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // Anything that didn't match "recommended" within its own card is
+      // basic-tier on this site (there are only these two tiers) -
+      // confirmed live for the "Other Basic Quotes" list, which never
+      // carries its own per-row "basic" label at all.
+      out.push({ ...r, package_tier: r.package_tier === 'recommended' ? 'recommended' : 'basic' });
+      if (out.length >= 15) break;
+    }
+    return out;
+  }, KNOWN_CARRIER_NAMES);
+
+  return raw.map((r) => ({
+    underwriter: r.underwriter,
+    annual_premium: parsePremiumToAnnual(r.price_text),
+    is_recommended: r.package_tier === 'recommended',
+    package_tier: r.package_tier,
+  }));
+}
+
+/**
+ * Best-effort itemized coverage checklist for the two featured "Basic
+ * Coverage"/"Recommended Coverage" package cards (confirmed live: a list
+ * of benefit lines - Income Replacement, Death benefits, Caregiver
+ * benefits, etc. - each visually shown as included or excluded per
+ * package; the "Other Basic Quotes" list below doesn't show this level of
+ * detail at all, only carrier + price). `included` is a heuristic based on
+ * each line's text color relative to the darkest text in its own card
+ * (excluded items are visually greyed out) - not a confirmed DOM contract,
+ * so treated as informative, not authoritative; the evidence screenshot is
+ * the real source of truth if this disagrees with what a person sees.
+ */
+async function extractPackageCoverageDetails(page) {
+  return page.evaluate(() => {
+    const isVisible = (el) => {
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const priceRe = /\$\s*[\d,]+(?:\.\d{2})?\s*\/\s*(?:month|year|mo|yr)/i;
+    const headingEls = Array.from(document.querySelectorAll('*'))
+      .filter(isVisible)
+      .filter((el) => el.children.length === 0)
+      .filter((el) => /^(basic coverage|recommended coverage)$/i.test((el.textContent || '').trim()));
+
+    const luminance = (el) => {
+      const c = window.getComputedStyle(el).color;
+      const m = c && c.match(/\d+(\.\d+)?/g);
+      if (!m || m.length < 3) return null;
+      const [r, g, b] = m.map(Number);
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    };
+
+    const cards = [];
+    for (const heading of headingEls) {
+      const tier = /recommended/i.test(heading.textContent) ? 'recommended' : 'basic';
+      // Walk up from the heading to the card container - the smallest
+      // ancestor that also contains a price, matching the same card-level
+      // scoping used for carrier/price pairing above.
+      let card = heading;
+      for (let d = 0; d < 8 && card; d += 1) {
+        if (priceRe.test(card.textContent || '')) break;
+        card = card.parentElement;
+      }
+      if (!card) continue;
+
+      const leaf = Array.from(card.querySelectorAll('*')).filter((el) => el.children.length === 0 && isVisible(el));
+      const items = leaf
+        .map((el) => ({ text: (el.textContent || '').trim(), el }))
+        .filter((x) => x.text && x.text.length > 3 && x.text.length < 80)
+        .filter((x) => !priceRe.test(x.text))
+        .filter((x) => !/^(basic coverage|recommended coverage|buy online now)$/i.test(x.text));
+
+      const lums = items.map((x) => luminance(x.el)).filter((l) => l != null);
+      if (lums.length === 0) {
+        cards.push({ tier, coverage_items: items.map((x) => ({ label: x.text, included: null })) });
+        continue;
+      }
+      const darkest = Math.min(...lums);
+      const threshold = darkest + 40;
+      const coverage_items = items.map((x) => {
+        const l = luminance(x.el);
+        return { label: x.text, included: l == null ? null : l <= threshold };
+      });
+      cards.push({ tier, coverage_items });
+    }
+    return cards;
+  });
 }
 
 module.exports = {
@@ -162,6 +389,9 @@ module.exports = {
     maskSelectors.push('#postal-code-input:visible');
     await page.click('#submitBtn:visible');
     await page.waitForURL('**/autoquote/on/vehicle');
+    // Baseline for checkForAdvisoryBanner's diff below - nothing filled in
+    // on this page yet, so anything that appears later is genuinely new.
+    await lib.snapshotPageText(page);
 
     // ---- Vehicle Info ----
     // These waits are for the cascading select's options to finish loading
@@ -272,8 +502,42 @@ module.exports = {
     await lib.selectPlanning(page, 'label:has-text("Comprehensive Coverage") ~ select', /comprehensive/i.test(ownDamage) ? '1' : '0');
     await lib.selectPlanning(page, 'label:has-text("Collision Coverage") ~ select', /collision/i.test(ownDamage) ? '1' : '0');
 
-    await page.click('button:has-text("Continue"):visible');
-    await page.waitForURL('**/autoquote/on/driver');
+    // See the matching check before the Driver Info -> Discount Info
+    // Continue click below for why this is here (site-agnostic advisory-
+    // banner detection, near-zero cost when nothing matches).
+    let vehiclePageAlreadyAdvanced = false;
+    const vehicleBannerCheck = await lib.checkForAdvisoryBanner(page, { ctx: { n8nBaseUrl, routeId, runId }, gapNotes });
+    if (vehicleBannerCheck.resolutions.length && !vehicleBannerCheck.handled) {
+      const urlBeforeVehicleCheckpoint = page.url();
+      await lib.pauseForHuman(vehicleBannerCheck.pauseMessage);
+      // Confirmed live: clicking the site's own Continue button IS the
+      // correct, expected way to resolve an inline banner checkpoint (no
+      // separate dismiss control exists) - that single click landing on
+      // exactly the page this recipe was already headed to next is not a
+      // takeover, so skip the now-redundant click/wait below and continue
+      // straight into Driver Info. Only a genuinely unrecognized landing
+      // page means the human went further than resolving this checkpoint -
+      // that's the only case worth stopping for.
+      const navResult = lib.classifyCheckpointNavigation(page, urlBeforeVehicleCheckpoint, '/autoquote/on/driver');
+      if (navResult === 'unexpected') {
+        return {
+          status: lib.STATUS.MANUAL_HANDOFF,
+          failure_reason: null,
+          outcome: {
+            next_action: 'The page ended up somewhere this recipe did not recognize after a human checkpoint on the Vehicle Info page - looks like more of the flow was driven manually than just resolving that one checkpoint. Automation stopped here rather than running stale scripted steps against an unexpected page - check the browser window directly for whatever was reached.',
+          },
+          maskSelectors,
+        };
+      }
+      vehiclePageAlreadyAdvanced = navResult === 'advanced_as_expected';
+    }
+
+    if (!vehiclePageAlreadyAdvanced) {
+      await page.click('button:has-text("Continue"):visible');
+      await page.waitForURL('**/autoquote/on/driver');
+    }
+    // Fresh baseline for the Driver Info page's own advisory-banner checks.
+    await lib.snapshotPageText(page);
 
     // ---- Driver Info ----
     // legal_name/date_of_birth/gender are each ONE vault field but need
@@ -317,16 +581,45 @@ module.exports = {
     }
     if (params['licence_identity.class']) {
       const classMap = { G1: 'provisional', G2: 'probationary', G: 'full' };
-      await lib.selectPlanning(page, 'label:has-text("What type of licence does Driver") ~ select', classMap[params['licence_identity.class']] || 'full');
+      // Label is dynamically generated to include the entered first name
+      // ("What type of licence does <name> currently hold?"), same as the
+      // "first listed as a driver" / "been with their current insurance
+      // company" fields below - matched on a stable substring, not "Driver".
+      // Wrapped in the resilient variant as defense-in-depth: if this
+      // substring match itself ever stops matching (a further wording
+      // change), the brain gets one shot at re-identifying the right select
+      // from the page's own current structure before the route fails -
+      // rather than needing another hand-patched selector next time.
+      await lib.selectPlanningResilient(
+        page,
+        'label:has-text("What type of licence does") ~ select',
+        classMap[params['licence_identity.class']] || 'full',
+        { schemaField: 'licence_identity.class', ctx: { n8nBaseUrl, routeId, runId } }
+      );
     }
     await lib.selectPlanning(page, 'label:has-text("previously hold a full licence") ~ select', params['licensing_timeline.out_of_country_experience_recognized'] ? '1' : '0');
     if (params['licensing_timeline.first_licensed_age']) {
       await lib.fillPlanning(page, 'label:has-text("first licensed in Ontario") ~ input', String(params['licensing_timeline.first_licensed_age']));
     }
     if (params['licensing_timeline.g_date_or_year']) {
-      const [gMonth, gYear] = String(params['licensing_timeline.g_date_or_year']).split('-');
-      if (gMonth) await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=0', String(Number(gMonth)));
-      if (gYear) await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=1', gYear);
+      // Field name is "_date_or_year" deliberately - a bare 4-digit year is
+      // valid input, not just "MM-YYYY". Blindly splitting on "-" treated a
+      // bare year ("2016") as the month half, which doesn't exist as an
+      // option (1-12) and hung the select until it timed out. Only fill the
+      // month select when a real month is actually on file; a year-only
+      // value fills just the year and leaves month at the site's own
+      // default, disclosed honestly rather than guessing a month we don't
+      // have on record.
+      const raw = String(params['licensing_timeline.g_date_or_year']);
+      const monthYearMatch = raw.match(/^(\d{1,2})-(\d{4})$/);
+      if (monthYearMatch) {
+        await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=0', String(Number(monthYearMatch[1])));
+        await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=1', monthYearMatch[2]);
+      } else {
+        const yearOnly = raw.match(/^\d{4}$/) ? raw : raw.slice(0, 4);
+        await lib.selectPlanning(page, 'label:has-text("G licence date") ~ * select >> nth=1', yearOnly);
+        gapNotes.push('G licence date: only a year was on file (no month), so the month field was left at the site\'s own default and only the year was set.');
+      }
     }
     // Confirmed live: this field is conditionally hidden (its container is
     // display:none until some other condition is met), not simply absent
@@ -355,56 +648,156 @@ module.exports = {
       if (opts.length > 1) await lib.selectPlanning(page, 'label:has-text("been with their current insurance company") ~ select', opts[1]);
     }
 
-    // ---- History: cancellations / suspensions / accidents / tickets ----
-    // Only the zero-events path (all four "No") is live-verified, in either
-    // pass. The >0 path's per-event selects (e.g. accident-month0-0) are
-    // implemented from what the DOM structure implies, not something
-    // watched unlock and fill live — kept id-based, verify before relying
-    // on this for anyone with a real driving history to report.
-    const cancellationsAll = lib.parseEvents(
-      await lib.readVaultValue('insurance_cancellations.events', vaultPassphrase)
-    );
-    const cancellations = lib.filterEventsWithinYears(cancellationsAll, 3);
-    await page.click(`input[name="num-cancellations[0]"][value="${cancellations.length > 0 ? '1' : '0'}"]:visible`);
-
-    const suspensions = lib.parseEvents(
-      await lib.readVaultValue('licence_and_permit_events.suspension_or_cancellation_events_6yr', vaultPassphrase)
-    );
-    await lib.selectPlanning(page, '#num-suspensions0', suspensions.length === 0 ? '0' : suspensions.length === 1 ? '1' : '2');
-    for (let i = 0; i < Math.min(suspensions.length, 6); i += 1) {
-      const ev = suspensions[i] || {};
-      if (ev.month) await lib.selectPlanning(page, `#suspension-month0-${i}`, String(ev.month)).catch(() => {});
-      if (ev.year) await lib.selectPlanning(page, `#suspension-year0-${i}`, String(ev.year)).catch(() => {});
+    // Confirmed live: setting first_insured_year can trigger a dynamic
+    // advisory banner right here ("We noticed that you received your
+    // licence N years before you had insurance - if this is correct,
+    // please continue with the form"), which inserts new content directly
+    // above the very next section and shifts the page layout. That's the
+    // likely cause of a click immediately after this point timing out
+    // waiting for a now-moved element to stabilize. The banner render
+    // itself appears to be asynchronous (a check run immediately after
+    // setting the field found nothing, yet the click right after still
+    // failed) - a brief settle wait here before snapshotting/diffing gives
+    // the site's own reactive rendering a chance to actually appear before
+    // being checked, rather than only right before the final page-
+    // transition Continue click below.
+    await page.waitForTimeout(800);
+    let driverHistorySkipped = false;
+    const insuranceBannerCheck = await lib.checkForAdvisoryBanner(page, { ctx: { n8nBaseUrl, routeId, runId }, gapNotes });
+    if (insuranceBannerCheck.resolutions.length && !insuranceBannerCheck.handled) {
+      const urlBeforeInsuranceCheckpoint = page.url();
+      await lib.pauseForHuman(insuranceBannerCheck.pauseMessage);
+      // Clicking the site's own Continue button here submits the *entire*
+      // rest of Driver Info at once (there's no separate per-section
+      // submit) - if that's what resolved this checkpoint, the recipe
+      // never got a chance to fill cancellations/suspensions/accidents/
+      // tickets/policy-date with the real values below. Disclosed honestly
+      // rather than silently treated as filled.
+      const navResult = lib.classifyCheckpointNavigation(page, urlBeforeInsuranceCheckpoint, '/autoquote/on/discounts');
+      if (navResult === 'unexpected') {
+        return {
+          status: lib.STATUS.MANUAL_HANDOFF,
+          failure_reason: null,
+          outcome: {
+            next_action: 'The page ended up somewhere this recipe did not recognize after a human checkpoint on the Driver Info page - looks like more of the flow was driven manually than just resolving that one checkpoint. Automation stopped here rather than running stale scripted steps against an unexpected page - check the browser window directly for whatever was reached.',
+          },
+          maskSelectors,
+        };
+      }
+      if (navResult === 'advanced_as_expected') {
+        driverHistorySkipped = true;
+        gapNotes.push(
+          'Driver Info was submitted while resolving a human checkpoint (via the site\'s own Continue button) before this recipe could fill insurance cancellations, licence suspensions, at-fault accidents, traffic tickets, or the policy start date - those may reflect the site\'s own defaults rather than the values on file. Verify them on the actual quote before treating it as final.'
+        );
+      }
     }
 
-    // Rates.ca's "Has Driver #1 had any at-fault accidents?" question didn't
-    // state an explicit lookback window on screen — 6 years assumed here,
-    // matching the OAF 1 baseline, not confirmed against the live site.
-    const accidents = lib.filterEventsWithinYears(
-      lib.parseEvents(await lib.readVaultValue('accidents_and_claims.events', vaultPassphrase)),
-      6
-    );
-    await lib.selectPlanning(page, '#num-accidents0', String(Math.min(accidents.length, 5)));
-    for (let i = 0; i < Math.min(accidents.length, 6); i += 1) {
-      const ev = accidents[i] || {};
-      if (ev.month) await lib.selectPlanning(page, `#accident-month0-${i}`, String(ev.month)).catch(() => {});
-      if (ev.year) await lib.selectPlanning(page, `#accident-year0-${i}`, String(ev.year)).catch(() => {});
+    let discountsPageAlreadyAdvanced = false;
+    if (!driverHistorySkipped) {
+      // ---- History: cancellations / suspensions / accidents / tickets ----
+      // Only the zero-events path (all four "No") is live-verified, in either
+      // pass. The >0 path's per-event selects (e.g. accident-month0-0) are
+      // implemented from what the DOM structure implies, not something
+      // watched unlock and fill live — kept id-based, verify before relying
+      // on this for anyone with a real driving history to report.
+      const cancellationsAll = lib.parseEvents(
+        await lib.readVaultValue('insurance_cancellations.events', vaultPassphrase)
+      );
+      const cancellations = lib.filterEventsWithinYears(cancellationsAll, 3);
+      // Confirmed live (twice, including after a wait-and-retry of the exact
+      // same click, which failed identically both times - not a transient
+      // timing issue): unlike suspensions/accidents/tickets below, which are
+      // plain <select> dropdowns, this question renders as styled pill
+      // buttons. The underlying native <input> is very likely visually
+      // hidden behind that custom styling (a common accessible-custom-
+      // control pattern), which Playwright's actionability check treats as
+      // "never visible" even though the input is real and functionally
+      // clickable - a plain page.click() then waits the full timeout for a
+      // visibility state that will never arrive. A direct DOM click via
+      // evaluate() sidesteps that CSS-visibility requirement entirely.
+      const cancellationsRawSelector = `input[name="num-cancellations[0]"][value="${cancellations.length > 0 ? '1' : '0'}"]`;
+      try {
+        await page.click(`${cancellationsRawSelector}:visible`);
+      } catch (e) {
+        const clicked = await page.evaluate((sel) => {
+          const el = document.querySelector(sel);
+          if (el) {
+            el.click();
+            return true;
+          }
+          return false;
+        }, cancellationsRawSelector);
+        if (!clicked) throw e;
+      }
+
+      const suspensions = lib.parseEvents(
+        await lib.readVaultValue('licence_and_permit_events.suspension_or_cancellation_events_6yr', vaultPassphrase)
+      );
+      await lib.selectPlanning(page, '#num-suspensions0', suspensions.length === 0 ? '0' : suspensions.length === 1 ? '1' : '2');
+      for (let i = 0; i < Math.min(suspensions.length, 6); i += 1) {
+        const ev = suspensions[i] || {};
+        if (ev.month) await lib.selectPlanning(page, `#suspension-month0-${i}`, String(ev.month)).catch(() => {});
+        if (ev.year) await lib.selectPlanning(page, `#suspension-year0-${i}`, String(ev.year)).catch(() => {});
+      }
+
+      // Rates.ca's "Has Driver #1 had any at-fault accidents?" question didn't
+      // state an explicit lookback window on screen — 6 years assumed here,
+      // matching the OAF 1 baseline, not confirmed against the live site.
+      const accidents = lib.filterEventsWithinYears(
+        lib.parseEvents(await lib.readVaultValue('accidents_and_claims.events', vaultPassphrase)),
+        6
+      );
+      await lib.selectPlanning(page, '#num-accidents0', String(Math.min(accidents.length, 5)));
+      for (let i = 0; i < Math.min(accidents.length, 6); i += 1) {
+        const ev = accidents[i] || {};
+        if (ev.month) await lib.selectPlanning(page, `#accident-month0-${i}`, String(ev.month)).catch(() => {});
+        if (ev.year) await lib.selectPlanning(page, `#accident-year0-${i}`, String(ev.year)).catch(() => {});
+      }
+
+      const tickets = lib.parseEvents(await lib.readVaultValue('convictions.events_3yr', vaultPassphrase));
+      await lib.selectPlanning(page, '#num-tickets0', String(Math.min(tickets.length, 5)));
+      for (let i = 0; i < Math.min(tickets.length, 6); i += 1) {
+        const ev = tickets[i] || {};
+        if (ev.month) await lib.selectPlanning(page, `#ticket-month0-${i}`, String(ev.month)).catch(() => {});
+        if (ev.year) await lib.selectPlanning(page, `#ticket-year0-${i}`, String(ev.year)).catch(() => {});
+      }
+
+      if (params['coverage_configuration.requested_effective_date']) {
+        await lib.fillPlanning(page, '#policy-start-date0', params['coverage_configuration.requested_effective_date']);
+      }
+
+      // Confirmed live: after filling licensing timeline + insurance history,
+      // Rates.ca can show a non-blocking advisory banner ("we noticed a gap
+      // between your first-licensed and first-insured dates - if correct,
+      // continue") rather than a hard validation error. This isn't a known
+      // field to map - it's a confirmation of data already entered. Generic,
+      // site-agnostic detection (not hardcoded to this exact wording) via
+      // lib.checkForAdvisoryBanner; only auto-proceeds on a confident
+      // acknowledge_and_continue from the brain, otherwise pauses for a human
+      // rather than risking clicking past something that actually matters.
+      const bannerCheck = await lib.checkForAdvisoryBanner(page, { ctx: { n8nBaseUrl, routeId, runId }, gapNotes });
+      if (bannerCheck.resolutions.length && !bannerCheck.handled) {
+        const urlBeforeDiscountsCheckpoint = page.url();
+        await lib.pauseForHuman(bannerCheck.pauseMessage);
+        const navResult2 = lib.classifyCheckpointNavigation(page, urlBeforeDiscountsCheckpoint, '/autoquote/on/discounts');
+        if (navResult2 === 'unexpected') {
+          return {
+            status: lib.STATUS.MANUAL_HANDOFF,
+            failure_reason: null,
+            outcome: {
+              next_action: 'The page ended up somewhere this recipe did not recognize after a human checkpoint on the Driver Info page - looks like more of the flow was driven manually than just resolving that one checkpoint. Automation stopped here rather than running stale scripted steps against an unexpected page - check the browser window directly for whatever was reached.',
+            },
+            maskSelectors,
+          };
+        }
+        discountsPageAlreadyAdvanced = navResult2 === 'advanced_as_expected';
+      }
     }
 
-    const tickets = lib.parseEvents(await lib.readVaultValue('convictions.events_3yr', vaultPassphrase));
-    await lib.selectPlanning(page, '#num-tickets0', String(Math.min(tickets.length, 5)));
-    for (let i = 0; i < Math.min(tickets.length, 6); i += 1) {
-      const ev = tickets[i] || {};
-      if (ev.month) await lib.selectPlanning(page, `#ticket-month0-${i}`, String(ev.month)).catch(() => {});
-      if (ev.year) await lib.selectPlanning(page, `#ticket-year0-${i}`, String(ev.year)).catch(() => {});
+    if (!discountsPageAlreadyAdvanced) {
+      await page.click('button:has-text("Continue"):visible');
+      await page.waitForURL('**/autoquote/on/discounts');
     }
-
-    if (params['coverage_configuration.requested_effective_date']) {
-      await lib.fillPlanning(page, '#policy-start-date0', params['coverage_configuration.requested_effective_date']);
-    }
-
-    await page.click('button:has-text("Continue"):visible');
-    await page.waitForURL('**/autoquote/on/discounts');
 
     // ---- Discount Info ----
     // The radio's own <label> wraps it — clicking the label text toggles
@@ -446,9 +839,78 @@ module.exports = {
       );
     }
 
+    // Confirmed live: right after "Get Free Quotes" is clicked, Rates.ca
+    // shows a transient loading interstitial ("You'll be redirected in a
+    // few seconds... Contacting <underwriter>") while it queries carriers
+    // in the background - the fixed 2s wait above isn't nearly enough for
+    // that to clear, so the evidence screenshot captured the loading state
+    // instead of actual results. Poll for that interstitial's own text to
+    // disappear (bounded, so a route that genuinely never finishes loading
+    // still completes rather than hanging indefinitely) before finishing,
+    // so the evidence this recipe saves actually shows the results page a
+    // person could read the premium off of.
+    const interstitialClearedDeadline = Date.now() + 45000;
+    while (Date.now() < interstitialClearedDeadline) {
+      const stillLoading = await page
+        .evaluate(() => /redirected in a few seconds|contacting/i.test(document.body.innerText))
+        .catch(() => false);
+      if (!stillLoading) break;
+      await page.waitForTimeout(1500);
+    }
+
     if (modelMatch.tier !== 'exact') {
       const tierLabel = modelMatch.tier === 'prefix' ? 'closest prefix' : modelMatch.tier === 'partial_word_match' ? 'closest trim match' : 'same model, unconfirmed trim';
       gapNotes.push(`Requested vehicle model "${params['vehicle_identity.model']}" wasn't listed exactly — quoted trim is actually "${modelMatch.text}" (match: ${tierLabel}). Verify this matches your actual vehicle before treating the quote as final.`);
+    }
+
+    const carrierQuotes = await extractCarrierQuotes(page).catch(() => []);
+    if (carrierQuotes.length === 0) {
+      gapNotes.push(
+        'Reached the Your Quotes results page, but this run\'s carrier-name/price extraction found nothing to report - ' +
+          'the page may not have finished loading, or its layout doesn\'t match the extraction heuristic. Check the evidence screenshot directly for the actual figures.'
+      );
+    } else if (carrierQuotes.some((c) => c.annual_premium == null)) {
+      gapNotes.push(
+        `Extracted ${carrierQuotes.length} carrier(s) from the Your Quotes page, but at least one price couldn't be parsed into a number - check the evidence screenshot to confirm the real figures.`
+      );
+    }
+
+    // Basic vs Recommended (the two featured package cards, same top-ranked
+    // carrier) and the fact that every other listed carrier is Basic-tier
+    // only - both surfaced explicitly, not left implicit in a premium
+    // number alone, since a price difference here reflects a real coverage
+    // difference, not just a cheaper/pricier version of the same policy.
+    const packageDetails = await extractPackageCoverageDetails(page).catch(() => []);
+    const basicCard = packageDetails.find((c) => c.tier === 'basic');
+    const recommendedCard = packageDetails.find((c) => c.tier === 'recommended');
+
+    if (basicCard && recommendedCard) {
+      const recommendedByLabel = new Map(recommendedCard.coverage_items.map((i) => [i.label, i.included]));
+      const upgradedInRecommended = basicCard.coverage_items
+        .filter((item) => item.included === false && recommendedByLabel.get(item.label) === true)
+        .map((item) => item.label);
+      if (upgradedInRecommended.length > 0) {
+        gapNotes.push(
+          `Basic vs Recommended (top-ranked carrier): Recommended includes ${upgradedInRecommended.length} benefit(s) Basic does not - ${upgradedInRecommended.join(', ')}. (Best-effort visual extraction - verify against the evidence screenshot.)`
+        );
+        if (params['coverage_configuration.accident_benefits_selection'] === 'standard_mandatory_only') {
+          gapNotes.push(
+            'The profile requested standard_mandatory_only accident benefits - the Recommended package\'s extra benefit(s) above go beyond that, so Recommended is a variance from what was declared; Basic looks like the closer match to the requested coverage, but verify against the evidence screenshot before relying on this.'
+          );
+        }
+      } else if (basicCard.coverage_items.length > 0) {
+        gapNotes.push('Basic and Recommended packages from the top-ranked carrier appeared to include the same benefit items in this best-effort extraction despite the price difference between them - verify against the evidence screenshot.');
+      }
+    } else if (basicCard || recommendedCard) {
+      gapNotes.push('Could only extract itemized coverage for one of the two featured package tiers (Basic/Recommended) this run - see the evidence screenshot for the other.');
+    } else {
+      gapNotes.push('Could not extract itemized coverage details for the Basic/Recommended package comparison this run - see the evidence screenshot.');
+    }
+
+    if (carrierQuotes.some((c) => c.package_tier === 'basic' && !c.is_recommended)) {
+      gapNotes.push(
+        'The "Other Basic Quotes" list of additional carriers reflects Basic-tier coverage only, per the site\'s own section heading - not directly comparable to the Recommended-tier premium above without accounting for that coverage difference.'
+      );
     }
 
     return {
@@ -457,9 +919,12 @@ module.exports = {
       outcome: {
         exact_quote_or_estimate: 'quote',
         eligibility_result: 'returned_a_result_page',
+        carrier_quotes: carrierQuotes,
+        package_coverage_comparison: { basic: basicCard || null, recommended: recommendedCard || null },
         next_action: [
-          'Capture the actual returned premiums/underwriters from the Your Quotes page — this recipe stops at ' +
-            'detecting a successful submission and has not yet been extended to parse the results table itself.',
+          carrierQuotes.length > 0
+            ? `Extracted ${carrierQuotes.length} carrier quote(s) from the Your Quotes page (see carrier_quotes) - verify against the evidence screenshot before treating any figure as final, since this extraction is a best-effort heuristic, not confirmed against the site's real markup.`
+            : 'Reached the Your Quotes results page but could not extract carrier names/prices this run - see the evidence screenshot for the actual figures.',
           ...gapNotes,
         ].join(' '),
       },
