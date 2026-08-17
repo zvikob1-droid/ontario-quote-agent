@@ -1,0 +1,152 @@
+{
+  "run_id": "run_1786979333740_07hwg8",
+  "generated_at": "2026-08-17T15:09:13.032Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr — My vehicle",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr — My vehicle",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route in the market registry with status active_mvp; product_scope standard_PPA matches this profile (personal-use daily driver, new owned Civic). This is also the designated MVP route.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "The market registry currently only has one route actually built out and verified: rates_ca (active_mvp). The 'underwriting_groups_seed' block is just a reference list of insurer legal-entity/group names and validation notes — it's not a set of usable routes (no registry_id, quote_url, status, or distinct_rate_source_id for any of them), so I can't plan against it. That means this run only checks one aggregator (Rates.ca), not the broader panel implied by those ~30 insurer groups. If you want direct-to-carrier routes (e.g. belairdirect, TD, Aviva, Sonnet) or other aggregators (LowestRates.ca, Kanetix, etc.) checked, those still need to be added to registry/market_registry.json with verified quote URLs/status before I can include them — right now they'd just be silent gaps if I invented them. No duplicate-rate-source conflict to resolve since there's only one active route this run. Nothing in the submitted profile looked like a sensitive/vault field — all values map cleanly to planning_safe intake fields."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "unresolved",
+          "failure_reason": "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation to \"**/autoquote/on/vehicle\" until \"load\"\n  navigated to \"https://ratesinsuranceservices.rates.ca/autoquote/vehicle\"\n  navigated to \"https://ratesinsuranceservices.rates.ca/autoquote/vehicle?__cf_chl_rt_tk=YIBzYzrj7.fYnTcefh.3FV9q4HIQfgMJXiZ6VEbssW8-1786979387-1.0.1.1-jIOa85Evy6VWiC9JO3qyGPhzGtxWb5g8u1L8rKNxGGQ\"\n  navigated to \"https://ratesinsuranceservices.rates.ca/autoquote/vehicle\"\n============================================================",
+          "evidence": {
+            "timestamp": "2026-08-17T15:09:13.038Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/745b6d2a-63dd-46f1-b6e0-974a3ed5b3e5/1786979417794_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr — My vehicle",
+        "results": [
+          {
+            "registry_id": "rates_ca",
+            "status": "unresolved",
+            "dedup_notes": "Single result, no duplicate detection applicable — no other Rates.ca-adjacent result was returned this run to compare against.",
+            "outcome": {
+              "summary": "Route did not complete. The worker hit a Cloudflare navigation challenge on ratesinsuranceservices.rates.ca and the page never reached the vehicle-entry step within the 30s timeout — no quote form data was submitted and no rate was returned.",
+              "failure_reason": "page.waitForURL timeout (30000ms) — stuck on Cloudflare challenge redirect loop before the /autoquote/on/vehicle step ever loaded."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "No coverage details were disclosed — the route failed before any quote form was reached, so nothing about own-damage deductible, liability limit, DCPD, or the OPCF44R endorsement could be confirmed one way or the other."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-17T15:09:13.038Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/745b6d2a-63dd-46f1-b6e0-974a3ed5b3e5/1786979417794_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "summary_text": "No usable quote from this run. Rates.ca never got past its own Cloudflare bot check — the worker was stuck redirecting on the challenge page for 30 seconds and gave up before it could even start entering vehicle details. There's a screenshot saved as evidence, but it's evidence of the failure, not of a quote.\n\nBottom line: 0 of 1 attempted route produced a premium this run. Nothing here to compare on price, deductible, endorsements, or discounts — all of that is simply unknown, not \"matching benchmark\" and not \"unavailable from the insurer.\" This is a scraping/bot-detection problem on Rates.ca's end at this moment, not a market finding about pricing or eligibility. Worth a retry, possibly with a longer timeout or a different time of day, since Cloudflare challenges are often transient rather than a permanent block.",
+        "gaps": [
+          "Rates.ca route status is unresolved (Cloudflare challenge timeout) — this is explicitly not a coverage decline or 'not offered' outcome, just an unresolved attempt.",
+          "No premium, deductible, endorsement, or discount information was disclosed for this route at all — nothing to mark as matching or varying from the OPCF44R / $500 deductible / winter tires benchmark configuration.",
+          "Only one route was attempted in this run; market completion for the broader Ontario panel remains unassessed beyond this single failed attempt.",
+          "Retry not yet performed — unresolved status should not be treated as final until another attempt is made."
+        ]
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9927,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 1787,
+          "output_tokens_details": {
+            "thinking_tokens": 627
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr — My vehicle",
+        "usage": {
+          "input_tokens": 7566,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2305,
+          "output_tokens_details": {
+            "thinking_tokens": 1004
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 21585
+  }
+}

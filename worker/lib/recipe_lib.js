@@ -511,6 +511,78 @@ function classifyCheckpointNavigation(page, urlBeforeCheckpoint, expectedNextUrl
   return 'unexpected';
 }
 
+/**
+ * Detects a bot-detection/verification interstitial (confirmed live on
+ * Rates.ca: a redirect loop through a URL carrying a `__cf_chl_rt_tk`
+ * Cloudflare challenge token, page never actually reaching the target
+ * route). Checked two ways - a URL pattern and generic page text - kept
+ * site-agnostic (not hardcoded to Cloudflare's exact copy) since any site
+ * could show something in this shape.
+ */
+async function looksLikeBotChallenge(page) {
+  const url = page.url();
+  if (/[?&]__cf_chl_rt_tk=/.test(url) || /\/cdn-cgi\/challenge-platform\//.test(url)) return true;
+  return page
+    .evaluate(() => {
+      const text = ((document.body && document.body.innerText) || '').toLowerCase();
+      return /checking (if )?your browser|verify you are human|just a moment|enable javascript and cookies to continue|attention required/.test(
+        text
+      );
+    })
+    .catch(() => false);
+}
+
+/**
+ * Same as page.waitForURL, but if it looks like a bot-detection challenge
+ * rather than an ordinary slow load, pauses for a human to clear it in the
+ * visible browser window instead of just failing - the same CAPTCHA-
+ * checkpoint pattern this project already uses elsewhere (never solved or
+ * bypassed by automation).
+ *
+ * Confirmed live: a real Cloudflare challenge cycles through several
+ * redirect hops and can settle back onto a clean-looking URL well before a
+ * single check at the end of a long timeout would ever see it - checking
+ * only once, after waiting out the full timeout, missed it entirely.
+ * Polls in short slices instead, checking for the challenge signal between
+ * each one, so it's caught while actually visible rather than after it's
+ * already cycled past.
+ *
+ * If the full timeout budget elapses without ever seeing a challenge
+ * signal, the original-shaped timeout error is thrown (a genuine slow
+ * load, not a challenge). If a challenge was seen and a human resumes but
+ * the page still isn't past it, throws Blocked rather than looping
+ * indefinitely - this project does not attempt to make automation look
+ * less automated to get past a persistent block; a human is the only
+ * thing that ever resolves this checkpoint.
+ */
+async function waitForURLOrBotChallenge(page, urlPattern, { timeoutMs = 30000, pollMs = 2000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  let sawChallenge = false;
+  while (Date.now() < deadline) {
+    const slice = Math.max(1, Math.min(pollMs, deadline - Date.now()));
+    try {
+      await page.waitForURL(urlPattern, { timeout: slice });
+      return;
+    } catch (e) {
+      if (await looksLikeBotChallenge(page)) {
+        sawChallenge = true;
+        break;
+      }
+    }
+  }
+  if (!sawChallenge) {
+    throw new Error(`page.waitForURL: Timeout ${timeoutMs}ms exceeded waiting for navigation to "${urlPattern}"`);
+  }
+  await pauseForHuman(
+    'The site is showing what looks like a bot-detection/verification challenge (e.g. a Cloudflare "checking your browser" page) instead of the expected page. Solve it or just wait it out yourself in the browser window, then press Enter to continue.'
+  );
+  try {
+    await page.waitForURL(urlPattern, { timeout: timeoutMs });
+  } catch (e2) {
+    throw new Blocked('Still stuck on a bot-detection challenge after a human checkpoint.');
+  }
+}
+
 // Same three patterns the n8n workflow's own input guardrail checks —
 // duplicated here deliberately (defense in depth, not trust-the-network):
 // even if n8n's check were ever bypassed, disabled, or out of sync, this
@@ -931,5 +1003,7 @@ module.exports = {
   withTimeout,
   pauseForHuman,
   classifyCheckpointNavigation,
+  looksLikeBotChallenge,
+  waitForURLOrBotChallenge,
   logger,
 };

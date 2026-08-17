@@ -174,6 +174,27 @@ challenge brief's requirement to state gaps rather than imply full coverage.
   `local_independent_broker.js`), but none of the other four MVP recipes have gotten far enough
   into their site's actual flow yet to exercise it — that's still pending the live-capture work
   described above, not the pause mechanism itself.
+  - **Confirmed live: Rates.ca can put the automation behind a Cloudflare challenge before it ever
+    reaches the intake form, and this does not appear to be about my IP.** `lib.looksLikeBotChallenge`/
+    `lib.waitForURLOrBotChallenge` (`worker/lib/recipe_lib.js`) detect the challenge (both by URL
+    pattern — a `__cf_chl_rt_tk` redirect-loop token — and by the interstitial's own page text) and
+    pause for me the same way any other CAPTCHA does, wired into all three of `rates_ca.js`'s page
+    transitions. First version checked once, at the end of the full wait, and missed the challenge
+    entirely since it cycles through several redirect hops and can settle back onto a clean-looking
+    URL before a single late check ever sees it — fixed to poll in short slices throughout the wait
+    instead. **Honest, harder finding:** even after that fix correctly opened the checkpoint and I
+    solved the visible challenge myself, the site kept re-issuing it. Tested from a different,
+    genuinely trustworthy home residential IP — still challenged from the very first attempt, which
+    rules out simple IP/rate-based reputation as the main cause and points instead at something
+    about the automated browser itself (most plausibly Cloudflare's Bot Management fingerprinting
+    Playwright's TLS/client signature, a signal that doesn't change no matter how many times a human
+    solves the visible checkbox). **Deliberately not addressed further:** the only way to reliably
+    get past that would be making the automation look less automated to Cloudflare — spoofing
+    fingerprint/TLS signals, browser-stealth patches, and similar techniques — which this project
+    does not do, on principle, not because it wasn't considered. The existing checkpoint mechanism
+    already does the right thing with this: it hands off to a real human, and if that human genuinely
+    can't get past it either, `blocked` is the honest, accurate status — not a gap still waiting on a
+    workaround.
 - **Panel visibility for brokers/aggregators.** Rates.ca and Onlia's returned underwriter panel can
   change over time and is only as broad as what's live and eligible for my specific profile at
   query time. Each result records the legal underwriter actually returned, not an assumed panel

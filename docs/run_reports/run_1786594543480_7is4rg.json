@@ -1,0 +1,320 @@
+{
+  "run_id": "run_1786594543480_7is4rg",
+  "generated_at": "2026-08-13T04:16:08.749Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr — My vehicle",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr — My vehicle",
+        "routes": [
+          {
+            "registry_id": "rates_ca",
+            "priority": 1,
+            "reason": "Only route currently marked active_mvp in the registry; broad panel aggregator fits this standard personal-use PPA profile with no signals (collector, high-net-worth, commercial) that would call for a different product_scope.",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": "2025",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": "20000",
+              "use.annual_kilometres": "8000",
+              "use.one_way_commute_distance": "0",
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": "21",
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": "8",
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Registry only has one entry in the actual `routes` array — rates_ca (active_mvp). Everything else supplied (the `underwriting_groups_seed` list) is a catalogue of insurer legal entities/groups, not independent, verified routes with their own quote_url/status — there's nothing there yet that qualifies as a plannable route (most are flagged 'validate' or 'broker route' with no route entry built). So this run is a single-route plan by necessity, not a deliberate narrowing — if you want direct/broker coverage for e.g. belairdirect, TD, Desjardins, Sonnet etc., those need actual registry route entries added first; right now attempting them would mean me guessing at URLs/automation that don't exist in the registry, which I won't do.\n\nNo collector/HNW signals in this profile, so no other product_scope routes would have applied even if the registry had more entries. Nothing in the profile input looked identifying — proceeding as planning_safe."
+      },
+      "worker_results": [
+        {
+          "registry_id": "rates_ca",
+          "status": "quoted_non_comparable",
+          "failure_reason": null,
+          "outcome": {
+            "exact_quote_or_estimate": "quote",
+            "eligibility_result": "returned_a_result_page",
+            "carrier_quotes": [
+              {
+                "underwriter": "Aviva",
+                "annual_premium": 3442,
+                "is_recommended": false,
+                "package_tier": "basic"
+              },
+              {
+                "underwriter": "Aviva",
+                "annual_premium": 3693,
+                "is_recommended": true,
+                "package_tier": "recommended"
+              },
+              {
+                "underwriter": "Sonnet",
+                "annual_premium": 3653,
+                "is_recommended": false,
+                "package_tier": "basic"
+              },
+              {
+                "underwriter": "Economical",
+                "annual_premium": 4502,
+                "is_recommended": false,
+                "package_tier": "basic"
+              },
+              {
+                "underwriter": "CAA",
+                "annual_premium": 4668,
+                "is_recommended": false,
+                "package_tier": "basic"
+              },
+              {
+                "underwriter": "Wawanesa",
+                "annual_premium": 4790,
+                "is_recommended": false,
+                "package_tier": "basic"
+              },
+              {
+                "underwriter": "Pembridge",
+                "annual_premium": 5320,
+                "is_recommended": false,
+                "package_tier": "basic"
+              },
+              {
+                "underwriter": "TD",
+                "annual_premium": 3442,
+                "is_recommended": true,
+                "package_tier": "recommended"
+              }
+            ],
+            "package_coverage_comparison": {
+              "basic": {
+                "tier": "basic",
+                "coverage_items": [
+                  {
+                    "label": "$286.83",
+                    "included": false
+                  },
+                  {
+                    "label": "/ month",
+                    "included": false
+                  },
+                  {
+                    "label": "$3,442",
+                    "included": true
+                  },
+                  {
+                    "label": "Third Party Liability",
+                    "included": true
+                  },
+                  {
+                    "label": "Medical, Rehab & Attendant Care",
+                    "included": true
+                  },
+                  {
+                    "label": "Cost of examination",
+                    "included": true
+                  },
+                  {
+                    "label": "Collision Coverage ($1,000 Deductible)",
+                    "included": true
+                  },
+                  {
+                    "label": "Comprehensive Coverage ($1,000 Deductible)",
+                    "included": true
+                  },
+                  {
+                    "label": "Income Replacement",
+                    "included": false
+                  },
+                  {
+                    "label": "Non-Earner benefits",
+                    "included": false
+                  },
+                  {
+                    "label": "Death benefits",
+                    "included": false
+                  },
+                  {
+                    "label": "Funeral benefits",
+                    "included": false
+                  },
+                  {
+                    "label": "Caregiver benefits",
+                    "included": false
+                  },
+                  {
+                    "label": "Housekeeping & Home Maintenance benefits",
+                    "included": false
+                  },
+                  {
+                    "label": "Expenses of Visitors",
+                    "included": false
+                  },
+                  {
+                    "label": "Lost Education Expenses",
+                    "included": false
+                  },
+                  {
+                    "label": "Damage to Personal Items (clothing, glasses, hearing aids, etc.)",
+                    "included": false
+                  },
+                  {
+                    "label": "Aviva",
+                    "included": true
+                  }
+                ]
+              },
+              "recommended": {
+                "tier": "recommended",
+                "coverage_items": [
+                  {
+                    "label": "$307.75",
+                    "included": false
+                  },
+                  {
+                    "label": "/ month",
+                    "included": false
+                  },
+                  {
+                    "label": "$3,693",
+                    "included": true
+                  },
+                  {
+                    "label": "Third Party Liability",
+                    "included": true
+                  },
+                  {
+                    "label": "Medical, Rehab & Attendant Care",
+                    "included": true
+                  },
+                  {
+                    "label": "Cost of examination",
+                    "included": true
+                  },
+                  {
+                    "label": "Collision Coverage ($1,000 Deductible)",
+                    "included": true
+                  },
+                  {
+                    "label": "Comprehensive Coverage ($1,000 Deductible)",
+                    "included": true
+                  },
+                  {
+                    "label": "Income Replacement",
+                    "included": true
+                  },
+                  {
+                    "label": "Non-Earner benefits",
+                    "included": true
+                  },
+                  {
+                    "label": "Death benefits",
+                    "included": true
+                  },
+                  {
+                    "label": "Funeral benefits",
+                    "included": true
+                  },
+                  {
+                    "label": "Caregiver benefits",
+                    "included": true
+                  },
+                  {
+                    "label": "Housekeeping & Home Maintenance benefits",
+                    "included": true
+                  },
+                  {
+                    "label": "Expenses of Visitors",
+                    "included": true
+                  },
+                  {
+                    "label": "Lost Education Expenses",
+                    "included": true
+                  },
+                  {
+                    "label": "Damage to Personal Items (clothing, glasses, hearing aids, etc.)",
+                    "included": true
+                  },
+                  {
+                    "label": "Aviva",
+                    "included": true
+                  }
+                ]
+              }
+            },
+            "next_action": "Extracted 8 carrier quote(s) from the Your Quotes page (see carrier_quotes) - verify against the evidence screenshot before treating any figure as final, since this extraction is a best-effort heuristic, not confirmed against the site's real markup. The winter tires discount question no longer appears on Rates.ca's Vehicle Info page (confirmed absent, not just an automation gap) — winter tire status could not be communicated to this site. The site showed new advisory text not tied to a known field - acknowledged and continued: This banner just restates the vehicle year/make/model/trim already entered — it's a confirmation display, not a request for new input, and doesn't touch consent, signature, or payment.. The site showed new advisory text that wasn't confidently auto-acknowledged (pause_and_ask) - This banner asserts an estimated annual driving distance based on commute/area behaviour — that's a material rating assumption about the applicant's actual usage, not a purely administrative default, and profile_context has no confirmed mileage to check it against, so it needs the applicant's own review before continuing.. G licence date: only a year was on file (no month), so the month field was left at the site's own default and only the year was set. The driver education discount question was not visible for this profile (Rates.ca shows it conditionally) — could not communicate driver training status to this site. The site showed new advisory text not tied to a known field - acknowledged and continued: Non-blocking informational banner confirming a licence-vs-insurance date gap already on file; it isn't requesting new input, consent, signature, or payment, so it's safe to proceed past.. Basic vs Recommended (top-ranked carrier): Recommended includes 9 benefit(s) Basic does not - Income Replacement, Non-Earner benefits, Death benefits, Funeral benefits, Caregiver benefits, Housekeeping & Home Maintenance benefits, Expenses of Visitors, Lost Education Expenses, Damage to Personal Items (clothing, glasses, hearing aids, etc.). (Best-effort visual extraction - verify against the evidence screenshot.) The profile requested standard_mandatory_only accident benefits - the Recommended package's extra benefit(s) above go beyond that, so Recommended is a variance from what was declared; Basic looks like the closer match to the requested coverage, but verify against the evidence screenshot before relying on this. The \"Other Basic Quotes\" list of additional carriers reflects Basic-tier coverage only, per the site's own section heading - not directly comparable to the Recommended-tier premium above without accounting for that coverage difference."
+          },
+          "evidence": {
+            "timestamp": "2026-08-13T04:16:08.753Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/rates_ca/f8eafab0-09d0-4113-8067-360ebf739a41/1786594724969_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr — My vehicle"
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9927,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2219,
+          "output_tokens_details": {
+            "thinking_tokens": 1083
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr — My vehicle",
+        "usage": {
+          "input_tokens": 25342,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 8192,
+          "output_tokens_details": {
+            "thinking_tokens": 8030
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 45680
+  }
+}

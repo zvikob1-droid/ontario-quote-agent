@@ -388,7 +388,12 @@ module.exports = {
     await lib.fillFromVault(page, '#postal-code-input:visible', 'primary_address.postal_code', vaultPassphrase);
     maskSelectors.push('#postal-code-input:visible');
     await page.click('#submitBtn:visible');
-    await page.waitForURL('**/autoquote/on/vehicle');
+    // Confirmed live: Rates.ca can show a Cloudflare bot-detection
+    // interstitial right here instead of loading Vehicle Info - a plain
+    // waitForURL just times out against it. This waits, then pauses for a
+    // human to clear it in the visible browser window if that's what's
+    // actually happening, rather than failing outright.
+    await lib.waitForURLOrBotChallenge(page, '**/autoquote/on/vehicle');
     // Baseline for checkForAdvisoryBanner's diff below - nothing filled in
     // on this page yet, so anything that appears later is genuinely new.
     await lib.snapshotPageText(page);
@@ -534,7 +539,7 @@ module.exports = {
 
     if (!vehiclePageAlreadyAdvanced) {
       await page.click('button:has-text("Continue"):visible');
-      await page.waitForURL('**/autoquote/on/driver');
+      await lib.waitForURLOrBotChallenge(page, '**/autoquote/on/driver');
     }
     // Fresh baseline for the Driver Info page's own advisory-banner checks.
     await lib.snapshotPageText(page);
@@ -796,7 +801,7 @@ module.exports = {
 
     if (!discountsPageAlreadyAdvanced) {
       await page.click('button:has-text("Continue"):visible');
-      await page.waitForURL('**/autoquote/on/discounts');
+      await lib.waitForURLOrBotChallenge(page, '**/autoquote/on/discounts');
     }
 
     // ---- Discount Info ----
