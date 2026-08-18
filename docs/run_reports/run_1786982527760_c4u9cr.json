@@ -1,0 +1,152 @@
+{
+  "run_id": "run_1786982527760_c4u9cr",
+  "generated_at": "2026-08-17T16:02:35.864Z",
+  "profiles": [
+    {
+      "label": "My vehicle (2025 Honda Civic LX 4dr)",
+      "route_plan": {
+        "profile_label": "My vehicle (2025 Honda Civic LX 4dr)",
+        "routes": [
+          {
+            "registry_id": "sonnet",
+            "priority": 1,
+            "reason": "Only route currently present in the market registry with status active_mvp; product_scope standard_PPA matches this daily-driver personal-use profile (new, owned, 8,000 km/yr, no commute).",
+            "params": {
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "vehicle_identity.model_year": 2025,
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": 20000,
+              "use.annual_kilometres": 8000,
+              "use.one_way_commute_distance": 0,
+              "use.use_type": "personal",
+              "current_insurance.first_insured_year": 2016,
+              "current_insurance.years_continuously_insured": 8,
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": 21,
+              "licensing_timeline.g1_date_or_year": 2014,
+              "licensing_timeline.g2_date_or_year": 2015,
+              "licensing_timeline.g_date_or_year": 2016,
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "Registry reality check: the market_registry's actual `routes` array contains exactly one entry — Sonnet (direct, active_mvp) — which is what's planned above. Everything else in the input (AIG, Allstate, Aviva, Intact/belairdirect, TD, Wawanesa, etc.) is listed under `underwriting_groups_seed`, which is background research on insurer groups/legal entities, not verified route entries — none of them have a registry_id, quote_url, or status, and most are explicitly flagged 'validate'/'broker route, needs mapping'. I'm not treating that seed data as attemptable routes, so there's nothing concrete to list in excluded_routes (no registry_id to point to) — this is a coverage gap, not a dedupe decision. If you want broader-than-Sonnet comparison this run, the registry needs those groups turned into real verified routes (quote URL, distribution type, distinct_rate_source_id) first — happy to re-plan once that's done. All profile fields supplied (vehicle, ownership, use, licence class/status, licensing timeline years, current-insurance tenure, coverage config) read as planning_safe categorical/numeric data consistent with the intake schema — nothing here looked like a name, DOB, licence number, VIN, or address, so no flags raised."
+      },
+      "worker_results": [
+        {
+          "registry_id": "sonnet",
+          "status": "unresolved",
+          "failure_reason": "page.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#provinceButton')\u001b[22m\n\u001b[2m    - locator resolved to <div tabindex=\"0\" role=\"listbox\" ng-blur=\"onBlur()\" id=\"provinceButton\" aria-required=\"true\" aria-invalid=\"false\" aria-disabled=\"false\" aria-expanded=\"false\" aria-multiselectable=\"false\" aria-label=\"undefined: Select\" aria-describedby=\"province-error\" data-hook-id=\"017b3a_province_dropdown\" aria-activedescendant=\"provinceOption0\" class=\"btn-link dropdown-display-btn click\" ng-class=\"{ 'open': ctrl.isOpen, 'disabled' : ctrl.disableDropdown }\" ng-attr-aria-describedby=\"{{ ctrl.describedBy !== '' ? ct…>…</div>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <label class=\"province-selector-body ng-binding\">↵            This information will only be used f…</label> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - <div class=\"panel-footer row\">…</div> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div class=\"modal-content\" uib-modal-transclude=\"\">…</div> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div class=\"panel-footer row\">…</div> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m  8 × retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <label class=\"province-selector-body ng-binding\">↵            This information will only be used f…</label> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div class=\"panel-footer row\">…</div> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 500ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> intercepts pointer events\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - <label class=\"province-selector-body ng-binding\">↵            This information will only be used f…</label> from <div index=\"0\" tabindex=\"-1\" role=\"dialog\" animate=\"animate\" modal-render=\"true\" modal-in-class=\"in\" modal-animation=\"true\" aria-labelledby=\"modalTitle\" uib-modal-window=\"modal-window\" uib-modal-animation-class=\"fade\" ng-style=\"{'z-index': 1050 + index*10, display: 'block'}\" window-top-class=\"standard-modal province-selector-modal\" window-class=\"shopping_cart.get_new_quote_modal_heading.label-interactive1\" class=\"modal fade ng-isolate-scope shopping_cart.get_new_quote_modal_heading.label-interactiv…>…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n",
+          "evidence": {
+            "timestamp": "2026-08-17T16:02:35.869Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/sonnet/42981b8b-bee6-4972-b8d0-b5b3d275392b/1786982599919_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "My vehicle (2025 Honda Civic LX 4dr)",
+        "results": [
+          {
+            "registry_id": "sonnet",
+            "status": "unresolved",
+            "dedup_notes": "Only result returned this run; no other route to compare against for duplication.",
+            "outcome": {
+              "summary": "Route failed before reaching any quote or coverage step. A province-selector modal overlay intercepted all click attempts on the province dropdown for 20+ seconds of retries, and the worker gave up.",
+              "evidence_timestamp": "2026-08-17T16:02:35.869Z"
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "Route failed before any coverage terms were confirmed on-site — no basis to compare liability limit, DCPD, endorsements (OPCF44R), or deductible structure against the benchmark."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-17T16:02:35.869Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/sonnet/42981b8b-bee6-4972-b8d0-b5b3d275392b/1786982599919_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "gaps": [
+          "The sonnet route never produced a quote — it stalled on a province-selector modal that kept intercepting clicks, and the automation gave up after 20+ seconds of retries. This is an automation failure, not an insurer declining or having no product for this profile.",
+          "No coverage terms (liability limit, DCPD, OPCF44R endorsement, $500 deductible, winter tire discount) could be verified against the benchmark, since the site was never reached past the province step.",
+          "No premium was disclosed for this route. Nothing here should be read as 'no quote available in market' — it's simply unresolved.",
+          "This run only attempted/returned one route (sonnet). If other routes were planned for this profile, their results weren't included in this comparison batch — market completion reflects only what was submitted here."
+        ],
+        "summary_text": "Straight answer: no usable quote came out of this run. The one route attempted (sonnet) got stuck on the site's own province-selector popup — a modal overlay kept covering the dropdown and the click never landed, even after retrying for 20+ seconds. The automation gave up before it ever reached a coverage or pricing screen, so there's nothing to compare against your benchmark (2M liability, standard accident benefits, DCPD included, $500 collision/comprehensive deductible, OPCF44R, winter tire discount request) — no premium, no confirmed coverage, no discount info. This is a technical/automation failure on a page interaction, not the insurer declining to quote or having no matching product. A screenshot was captured as evidence at the point of failure. Nothing to rank or recommend here yet — this route needs another pass (likely a recipe fix for that province modal) before it produces a real result."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9929,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2814,
+          "output_tokens_details": {
+            "thinking_tokens": 1568
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:My vehicle (2025 Honda Civic LX 4dr)",
+        "usage": {
+          "input_tokens": 12306,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2820,
+          "output_tokens_details": {
+            "thinking_tokens": 1631
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 27869
+  }
+}

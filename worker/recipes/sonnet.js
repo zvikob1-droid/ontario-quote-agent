@@ -66,6 +66,33 @@ module.exports = {
 
     // ---- Province ----
     await page.goto(module.exports.meta.entryUrl, { waitUntil: 'domcontentloaded' });
+
+    // Confirmed live (DOM inspection with placeholder data, never real
+    // data): a "Welcome to Sonnet!" modal can render on top of the page's
+    // own province selector on load, intercepting every click aimed at the
+    // background page until dismissed. It is a separate widget with its
+    // own ids - provinceSelectorButton / provinceSelectorOption9 /
+    // province-selector-submit-btn - not just a duplicate of the
+    // background page's provinceButton / provinceOption9 /
+    // province-submit-btn; confirming/dismissing it does NOT fill the
+    // background selector, which still needs to be filled independently
+    // below. A cookie-consent banner (Ketch) can also appear layered on
+    // top around the same time - dismissed first since it can itself
+    // intercept clicks aimed at the modal. Both are optional/best-effort:
+    // if a prior session already granted consent or already saw the
+    // welcome modal, neither may appear, so both are skipped gracefully
+    // rather than required.
+    const cookieBtn = page.locator('#ketch-banner-button-primary:visible');
+    if (await cookieBtn.count().catch(() => 0)) {
+      await cookieBtn.click().catch(() => {});
+    }
+    const welcomeModalButton = page.locator('#provinceSelectorButton:visible');
+    if (await welcomeModalButton.count().catch(() => 0)) {
+      await welcomeModalButton.click();
+      await page.click('#provinceSelectorOption9'); // Ontario
+      await page.click('#province-selector-submit-btn');
+    }
+
     await page.click('#provinceButton');
     await page.click('#provinceOption9'); // Ontario — this project is Ontario-only, hardcoded
     await page.click('#province-submit-btn');

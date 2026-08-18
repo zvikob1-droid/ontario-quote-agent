@@ -1,0 +1,152 @@
+{
+  "run_id": "run_1786983115946_adj708",
+  "generated_at": "2026-08-17T16:12:19.506Z",
+  "profiles": [
+    {
+      "label": "2025 Honda Civic LX 4dr",
+      "route_plan": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "routes": [
+          {
+            "registry_id": "sonnet",
+            "priority": 1,
+            "reason": "Only route currently verified/active in the market registry (status: active_mvp), and product_scope 'standard_PPA' fits this daily-driver new Honda Civic profile with no HNW/collector signals.",
+            "params": {
+              "vehicle_identity.model_year": 2025,
+              "vehicle_identity.make": "honda",
+              "vehicle_identity.model": "civic lx 4dr",
+              "ownership.new_or_used": "new",
+              "ownership.owned_or_leased": "owned",
+              "ownership.purchase_or_lease_month_year": "08-2026",
+              "ownership.purchase_price": 20000,
+              "use.annual_kilometres": 8000,
+              "use.one_way_commute_distance": 0,
+              "use.use_type": "personal",
+              "licence_identity.class": "g",
+              "licence_identity.status": "licensed",
+              "licensing_timeline.first_licensed_age": 21,
+              "licensing_timeline.g1_date_or_year": "2014",
+              "licensing_timeline.g2_date_or_year": "2015",
+              "licensing_timeline.g_date_or_year": "2016",
+              "current_insurance.first_insured_year": "2016",
+              "current_insurance.years_continuously_insured": 8,
+              "coverage_configuration.requested_effective_date": "2026-09-01",
+              "coverage_configuration.term_months": 12,
+              "coverage_configuration.third_party_liability_limit": 2000000,
+              "coverage_configuration.accident_benefits_selection": "standard_mandatory_only",
+              "coverage_configuration.dcpd": "included",
+              "coverage_configuration.own_damage_coverage": "collision_and_comprehensive_500_deductible",
+              "coverage_configuration.endorsements": [
+                "OPCF44R"
+              ],
+              "coverage_configuration.discounts_to_request": [
+                "winter_tires"
+              ]
+            }
+          }
+        ],
+        "excluded_routes": [],
+        "notes": "The market registry only lists one route with an actual registry_id, quote_url and verified status: Sonnet (active_mvp). Everything else in the input is just the underwriting_groups_seed reference table — insurer-group/legal-entity metadata with no registry_id, quote_url, distinct_rate_source_id, or status field, so none of it qualifies as a plannable route yet (most are explicitly flagged 'validate'/'broker route' i.e. unresolved). I'm not substituting any of them in. If you want broader market coverage (e.g. belairdirect, TD, Aviva, an aggregator like Rates.ca/LowestRates.ca), those need to be added to market_registry.json as real routes with verified quote URLs and status before I can plan them — right now this run will only reach Sonnet directly. No sensitive fields were seen in the profile; everything supplied (vehicle, coverage, use, licence class/status, licensing timeline years, current-insurance duration) is planning_safe per the intake schema."
+      },
+      "worker_results": [
+        {
+          "registry_id": "sonnet",
+          "status": "unresolved",
+          "failure_reason": "Failed to fill vault_only field \"primary_address.street\" (TimeoutError) — the value itself is never included in this error.",
+          "evidence": {
+            "timestamp": "2026-08-17T16:12:19.512Z",
+            "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/sonnet/258d5c0c-35d1-498f-a658-bac0d3c8ca56/1786983203901_final.png"
+          }
+        }
+      ],
+      "comparison": {
+        "profile_label": "2025 Honda Civic LX 4dr",
+        "results": [
+          {
+            "registry_id": "sonnet",
+            "status": "unresolved",
+            "dedup_notes": "Single result this run — no other quotes to compare against, no duplication possible.",
+            "outcome": {
+              "failure_reason": "recipe_failure_vault_field_timeout",
+              "detail": "Worker failed to fill a vault_only field (primary_address.street) — TimeoutError. This is an implementation/automation gap, not a market finding: the insurer's site was never actually reached with a complete application, so no signal about their pricing or appetite for this profile can be drawn from this attempt."
+            },
+            "price": {
+              "annual_premium": null
+            },
+            "coverage": {
+              "deductible_match": "not_disclosed",
+              "additional_coverage": [],
+              "variance_from_benchmark": [
+                "Route did not reach a coverage-confirmation step before failing — no coverage terms (liability limit, DCPD, endorsements, deductible) were disclosed or confirmed, so this cannot be treated as a match to benchmark, only as no data."
+              ]
+            },
+            "discounts": {
+              "applied": [],
+              "disclosed": false
+            },
+            "evidence": {
+              "timestamp": "2026-08-17T16:12:19.512Z",
+              "redacted_artifact_ref": "/Users/fitqueen/Desktop/Use Cases/ontario-quote-agent/worker/evidence/sonnet/258d5c0c-35d1-498f-a658-bac0d3c8ca56/1786983203901_final.png"
+            }
+          }
+        ],
+        "metrics": {
+          "market_completion": 0,
+          "comparable_quote_yield": 0,
+          "evidence_rate": 1,
+          "duplicate_suppression": 0,
+          "freshness": 1
+        },
+        "gaps": [
+          "The sonnet route did not produce a quote this run — it failed while filling in the address field with a timeout, before any coverage or pricing information was reached.",
+          "No premium, deductible, discount, or coverage-variance data exists for this route this run; it cannot be compared to the benchmark configuration.",
+          "This is a technical/automation failure, not evidence the insurer declined or doesn't offer this profile — that distinction matters and shouldn't be conflated.",
+          "Zero of the planned/attempted routes this run reached a comparable quote — market coverage for this profile is currently at 0%."
+        ],
+        "summary_text": "Only one result came back this run, and it didn't produce a quote. The worker got stuck trying to fill in the street address on the sonnet route (a timeout on a vault-only field) and never got far enough to see coverage terms or pricing — so there's nothing to compare to your benchmark for this attempt. This isn't the insurer saying no; it's the automation not completing the form. Net for this run: 0 comparable quotes, 0% market completion. Nothing here to act on yet — this route needs to be retried or the address-field recipe needs a look."
+      },
+      "flags": []
+    }
+  ],
+  "claude_usage": {
+    "by_call": [
+      {
+        "call": "plan",
+        "usage": {
+          "input_tokens": 9929,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2386,
+          "output_tokens_details": {
+            "thinking_tokens": 1309
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      {
+        "call": "compare:2025 Honda Civic LX 4dr",
+        "usage": {
+          "input_tokens": 7290,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 2099,
+          "output_tokens_details": {
+            "thinking_tokens": 971
+          },
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      }
+    ],
+    "total_tokens": 21704
+  }
+}

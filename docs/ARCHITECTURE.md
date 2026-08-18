@@ -212,3 +212,62 @@ mapping case) via a throwaway script before being wired into `rates_ca.js`'s lic
 as defense-in-depth alongside the direct substring fix; not yet exercised by an actual live
 selector failure (today's fix was resolved by the substring correction itself, so this fallback's
 live trigger path is still unproven end-to-end against a real site).
+
+### 7.6 Quote-extraction vision verification — a third call site, gated structurally, not on wording
+
+`extractCarrierQuotes` (`rates_ca.js`/`lowestrates_ca.js`) reads carrier names and premiums off a
+results page's own DOM — no Claude involvement, since this is a one-shot read of the site's own
+markup, not a question the recipe needs help interpreting. Live fixture testing (a reconstructed
+DOM built from a real results-page screenshot, not the live site itself, since this trigger hasn't
+yet been exercised against a live run) surfaced a real gap this DOM-only approach can't close on
+its own: a carrier logo with no readable `alt`/`title`/`src` text and no nearby text anywhere in its
+row is invisible to name-matching no matter how the matching logic is refined, because there is no
+name anywhere in the DOM to match. A screenshot, unlike markup, still shows a human-readable name in
+that case.
+
+`verify_carrier_quotes` (`brain/tools_schema.json`, `n8n/ontario_quote_agent.workflow.json`'s
+`oqa-verify-quotes` webhook, `worker/lib/recipe_lib.js#verifyCarrierQuotesWithBrain`) is that
+fallback, gated the same way §7.5's mechanisms are — structurally, not by matching expected wording
+or a hardcoded expected carrier count:
+
+- **The trigger is a count comparison, computed locally, before anything is sent anywhere.**
+  `extractCarrierQuotes` already knows, from its own DOM scan, how many distinct price-bearing rows
+  exist on the page (matched *and* unmatched) — it just scans for every visible leaf whose own text
+  contains a price, in addition to the carrier-anchor scan it already does, and dedups rows that
+  legitimately show a price twice (e.g. monthly + annual) onto the same shared ancestor a name
+  anchor climbing from the other direction would land on too. If that count is larger than the
+  number of rows a carrier name was actually found for, there's a real, structural gap — no
+  assumption about how many carriers *should* be on the page, which varies run to run. If there's no
+  gap, this fallback is never invoked at all — no cost on the runs where DOM extraction already got
+  everything right, which fixture testing suggests is the large majority.
+- **What's sent, and what isn't, mirrors §7.5's discipline exactly.** The image is a screenshot
+  cropped to the union of every row's own bounding box (matched and unmatched) — built from
+  coordinates the DOM scan already computed, never a DOM container selector — specifically so it
+  structurally cannot expand to include the vehicle/driver-info sidebar this site renders right next
+  to the results (see `docs/KNOWN_LIMITATIONS.md` for the earlier real screenshot name-leak this is
+  deliberately designed around). The accompanying text payload (the DOM-extracted candidate list) is
+  scanned for value-shaped patterns before it leaves the worker, same as `resolve_fields`'s input
+  guardrail — even though carrier names and dollar figures aren't expected to ever match one, the
+  check costs nothing and stays consistent with every other brain call in this pipeline. The one
+  honest exception to "scan everything before it leaves": pixel content can't be regex-scanned the
+  way a text payload can. That's a disclosed limitation of this specific fallback, not a false
+  guarantee — the crop-by-bounding-box design is what carries the actual weight of keeping the
+  sidebar out, not a scan of the image itself.
+- **What Claude returns is never trusted at face value, and is additive-only, never a silent
+  overwrite.** `verify_carrier_quotes`'s output is re-validated the same way `resolve_fields`'s is
+  (once in n8n, once again in the worker): `annual_premium` must exactly match a real price the
+  worker's own DOM scan already found *unmatched* on the page — Claude can name a carrier for a real
+  gap, never invent a dollar figure. `package_tier` must be one of the two fixed values.
+  `underwriter` is scanned against the same suspect-value patterns as every other guardrail in this
+  pipeline. The total number of rows considered is capped at the number of distinct rows the DOM
+  scan itself found, matched and unmatched combined — Claude cannot report more quotes exist than
+  the page actually has row containers for. And critically: if Claude's read of an *already-matched*
+  row disagrees with what DOM extraction found, that disagreement is surfaced as a gap note for the
+  human to check against the evidence screenshot — it is never auto-applied. DOM extraction reads
+  real markup; vision reads a screenshot. The former is authoritative wherever it succeeded at all.
+
+Guardrail-tested with a mocked brain response via a throwaway script (confirmed: a genuine gap is
+correctly detected and filled with the right carrier/price; monthly+annual price pairs for the same
+row correctly collapse into one gap entry rather than two) before being wired into both recipes; not
+yet exercised against a live results page or a real Claude vision call — see
+`docs/KNOWN_LIMITATIONS.md`.

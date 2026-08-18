@@ -148,13 +148,36 @@
       }
     },
     {
+      "name": "verify_carrier_quotes",
+      "description": "Gap-triggered vision verification for multi-carrier quote extraction: the worker's own DOM scan of a results page found more distinct price-bearing rows than it could attach a carrier name to (e.g. a stylized logo with no readable alt text or nearby label). You're given a screenshot cropped to just the results section (never the full page) plus the DOM-derived candidate list. Read the image and identify the carrier name for each row the worker couldn't name on its own. You may only ever attach a name to one of the exact dollar amounts already present in candidate_quotes or reflected in unmatched_row_count's own data — the worker discards anything else. Do not invent a premium you don't see clearly in the image, and do not guess a carrier name for a logo you can't actually read — omit that row instead. If the image is unreadable, doesn't match a quotes results page, or you're not genuinely confident in a reading, return an empty or partial quotes array rather than guessing — a missed row is far better than a wrong one.",
+      "input_schema": {
+        "type": "object",
+        "required": ["quotes"],
+        "properties": {
+          "quotes": {
+            "type": "array",
+            "description": "Your best reading of every carrier/price/tier visible in the image, including ones the worker already matched (used only to detect disagreement worth flagging — it never overwrites the worker's own DOM-extracted value). Only entries naming a genuinely new carrier for a price the worker's own scan already found unmatched are ever added to the run's results.",
+            "items": {
+              "type": "object",
+              "required": ["underwriter", "annual_premium", "package_tier"],
+              "properties": {
+                "underwriter": { "type": "string", "description": "The insurer name as shown on its logo/label in the image, e.g. 'Sonnet', 'Gore Mutual'. Short and plain — not a sentence, not a guess dressed up as a name." },
+                "annual_premium": { "type": "number", "description": "The annual premium in dollars for this row, read from the image (convert a monthly figure ×12 if that's the only one shown) — must match a real figure visible in the image, never estimated." },
+                "package_tier": { "type": "string", "enum": ["basic", "recommended"], "description": "Which of the two tiers this row belongs to, based on the image's own labelling." }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "name": "flag_new_field",
-      "description": "Raise an anomaly: input contained something that looks sensitive or unrecognized rather than a clean planning_safe field. Never process the suspected value — only describe what was observed.",
+      "description": "Raise an anomaly: input contained something that looks sensitive or unrecognized rather than a clean planning_safe field. Never process the suspected value — only describe what was observed. Call this ONLY when something genuinely looks wrong. Never call it to confirm that nothing is wrong, and never call it just because the tool is available — if every field looks like a clean planning_safe value, simply don't call this tool at all this turn. This tool triggers the pipeline to halt the entire run, so an unnecessary call has a real cost, not just a harmless note.",
       "input_schema": {
         "type": "object",
         "required": ["observed_at", "description"],
         "properties": {
-          "observed_at": { "type": "string", "description": "Where in the input this was seen, e.g. 'route plan request, field vehicle_identity.owner_name'." },
+          "observed_at": { "type": "string", "description": "Where in the input this was seen, e.g. 'route plan request, field vehicle_identity.owner_name'. Never a placeholder like 'N/A' or 'none' — if there's no real location because nothing is actually wrong, don't call this tool at all." },
           "description": { "type": "string", "description": "What made this look sensitive or unrecognized — never repeat the actual value." },
           "suggested_sensitivity": { "type": "string", "enum": ["vault_only", "planning_safe"] }
         }

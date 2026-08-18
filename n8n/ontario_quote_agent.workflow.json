@@ -339,6 +339,141 @@
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($json) }}"
       }
+    },
+    {
+      "id": "verify-trigger",
+      "name": "Verify Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        800
+      ],
+      "parameters": {
+        "path": "oqa-verify-quotes",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "oqa-verify-quotes"
+    },
+    {
+      "id": "build-verify-request",
+      "name": "Build Claude Request (Verify)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        800
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Body sent by the local worker (worker/lib/recipe_lib.js's\n// verifyCarrierQuotesWithBrain), only when the worker's own DOM-based\n// carrier-quote extraction found a real gap - more price-bearing rows on a\n// results page than it could attach a carrier name to. image_base64 is a\n// screenshot cropped to just that results section (never the full page,\n// never a driver/vehicle info panel) - built entirely from row bounding\n// boxes on the worker's side, not a DOM container selector, specifically so\n// it structurally cannot expand to include anything else on the page.\nconst body = items[0].json.body || items[0].json;\n\nif (!body.system_prompt || !Array.isArray(body.tools)) {\n throw new Error('Request body is missing \"system_prompt\" or \"tools\".');\n}\nif (!body.image_base64 || !body.image_media_type) {\n throw new Error('Request body is missing \"image_base64\" or \"image_media_type\".');\n}\nif (!Array.isArray(body.candidate_quotes)) {\n throw new Error('Request body is missing \"candidate_quotes\".');\n}\n\n// INPUT GUARDRAIL: candidate_quotes/unmatched_row_count are structural\n// extraction results (carrier names, dollar figures), never applicant data\n// - but scanned anyway, same defense-in-depth reasoning as every other\n// brain call in this workflow. This cannot scan image_base64 itself (opaque\n// pixel content) - that's a disclosed, unavoidable limitation of this\n// fallback, not a gap in this check.\nconst SUSPECT_PATTERNS = [\n { name: 'email', re: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/ },\n { name: 'phone_number', re: /(\\+?1[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}/ },\n { name: 'postal_code', re: /\\b[A-Za-z][0-9][A-Za-z]\\s?[0-9][A-Za-z][0-9]\\b/ },\n { name: 'long_digit_run', re: /\\d{9,}/ },\n];\nconst flatText = JSON.stringify(body.candidate_quotes);\nconst tripped = SUSPECT_PATTERNS.filter((p) => p.re.test(flatText)).map((p) => p.name);\nif (tripped.length > 0) {\n return [{\n  json: {\n   run_id: body.run_id || null,\n   quotes: [],\n   flags: [{\n    observed_at: 'verify_quotes request, candidate_quotes',\n    description: `Blocked before reaching Claude - candidate_quotes matched pattern(s) suggesting a real value rather than extracted structural data: ${tripped.join(', ')}. Not forwarded.`,\n    suggested_sensitivity: 'vault_only',\n   }],\n   blocked_by_input_guardrail: true,\n  },\n }];\n}\n\nconst allTools = body.tools || [];\nconst verifyTools = allTools.filter((t) => t.name === 'verify_carrier_quotes');\n\nconst userText = JSON.stringify({\n task: 'verify_carrier_quotes',\n candidate_quotes: body.candidate_quotes,\n unmatched_row_count: body.unmatched_row_count || 0,\n}, null, 2);\n\nreturn [{\n json: {\n  run_id: body.run_id || null,\n  candidate_quotes: body.candidate_quotes,\n  unmatched_row_count: body.unmatched_row_count || 0,\n  claude_request: {\n   model: body.model || 'claude-sonnet-5',\n   max_tokens: 2048,\n   system: body.system_prompt,\n   tools: verifyTools,\n   tool_choice: { type: 'tool', name: 'verify_carrier_quotes' },\n   messages: [\n    {\n     role: 'user',\n     content: [\n      { type: 'text', text: userText },\n      { type: 'image', source: { type: 'base64', media_type: body.image_media_type, data: body.image_base64 } },\n     ],\n    },\n   ],\n  },\n },\n}];\n"
+      }
+    },
+    {
+      "id": "verify-input-guardrail-check",
+      "name": "Verify Input Guardrail Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        800
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.blocked_by_input_guardrail }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "notes": "TRUE branch (blocked) skips the Claude call entirely and goes straight to Parse Verification with the block info already attached \u2014 same shape as the Resolve flow's own guardrail branch."
+    },
+    {
+      "id": "claude-verify",
+      "name": "Claude \u2014 Verify Quotes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        80,
+        800
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claude_request) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PLACEHOLDER_SET_IN_N8N",
+          "name": "Anthropic API Key (x-api-key)"
+        }
+      },
+      "notes": "Same continueOnFail/retry-left-to-caller reasoning as the other Claude nodes, and the same 60s mid-route timeout as Claude \u2014 Resolve Fields \u2014 this call happens on the worker's own clock too, waiting to finish extracting a route's results."
+    },
+    {
+      "id": "parse-verify",
+      "name": "Parse Verification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        800
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "function extractApiError(resp) {\n let status = resp.statusCode || resp.httpCode\n  || (resp.error && (resp.error.httpCode || resp.error.statusCode)) || null;\n let apiErrorType = null;\n let message = null;\n const rawError = resp.error;\n if (typeof rawError === 'string') {\n  message = rawError;\n } else if (rawError && typeof rawError === 'object') {\n  message = rawError.message || rawError.description || JSON.stringify(rawError);\n  if (rawError.error && rawError.error.type) apiErrorType = rawError.error.type;\n }\n if (resp.type === 'error' && resp.error && resp.error.type) {\n  apiErrorType = resp.error.type;\n  message = resp.error.message || message;\n }\n return { message: message || 'Unknown error', status, apiErrorType };\n}\n\nconst claudeResponse = items[0].json;\nconst upstream = $('Build Claude Request (Verify)').first().json;\n\n// Build Claude Request (Verify) can itself short-circuit before ever\n// calling Claude (input guardrail tripped) - if it did, that item flows\n// straight through this node too, so just pass it on unchanged.\nif (upstream.blocked_by_input_guardrail) {\n return [{ json: upstream }];\n}\n\nif (claudeResponse.error || claudeResponse.type === 'error') {\n const info = extractApiError(claudeResponse);\n return [{ json: { run_id: upstream.run_id, quotes: [], error: `Claude API call failed: ${info.message}`, error_status: info.status, error_type: info.apiErrorType } }];\n}\n\nconst toolUseBlocks = (claudeResponse.content || []).filter((b) => b.type === 'tool_use');\nconst verifyBlocks = toolUseBlocks.filter((b) => b.name === 'verify_carrier_quotes').map((b) => b.input);\n\nif (verifyBlocks.length === 0) {\n return [{ json: { run_id: upstream.run_id, quotes: [], error: `Claude did not call verify_carrier_quotes (stop_reason: ${claudeResponse.stop_reason}).`, error_status: null, error_type: 'no_tool_call' } }];\n}\n\n// OUTPUT GUARDRAIL: defense-in-depth - the worker (worker/lib/recipe_lib.js\n// verifyCarrierQuotesWithBrain) re-validates everything returned here\n// independently and treats it as untrusted regardless of what this node\n// does, but this node applies the same discipline anyway, matching every\n// other brain call in this workflow. underwriter must be a short plain\n// string passing the same suspect-pattern scan as the input side,\n// annual_premium a real number, package_tier one of the two fixed values.\n// Total rows capped at candidate_quotes.length + unmatched_row_count - this\n// call can never legitimately report more distinct quotes exist than the\n// worker's own DOM scan already found real row containers for.\nconst VALID_TIERS = new Set(['basic', 'recommended']);\nconst SUSPECT_PATTERNS_OUT = [\n { re: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/ },\n { re: /(\\+?1[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}/ },\n { re: /\\b[A-Za-z][0-9][A-Za-z]\\s?[0-9][A-Za-z][0-9]\\b/ },\n { re: /\\d{9,}/ },\n];\nconst maxRows = (Array.isArray(upstream.candidate_quotes) ? upstream.candidate_quotes.length : 0) + (upstream.unmatched_row_count || 0);\nconst allQuotesRaw = verifyBlocks.flatMap((b) => Array.isArray(b.quotes) ? b.quotes : []).slice(0, maxRows);\n\nconst quotes = allQuotesRaw.map((q) => {\n const underwriter = typeof q.underwriter === 'string' ? q.underwriter.trim() : null;\n const annualPremium = typeof q.annual_premium === 'number' ? q.annual_premium : null;\n const tier = VALID_TIERS.has(q.package_tier) ? q.package_tier : null;\n let guardrailNote = null;\n if (!underwriter || underwriter.length > 60) {\n  guardrailNote = 'underwriter missing or implausibly long - discarded by the output guardrail.';\n } else if (SUSPECT_PATTERNS_OUT.some((p) => p.re.test(underwriter))) {\n  guardrailNote = 'underwriter matched a suspect pattern (looks like a real value, not a carrier name) - discarded by the output guardrail.';\n } else if (annualPremium == null) {\n  guardrailNote = 'annual_premium missing or not a number - discarded by the output guardrail.';\n } else if (!tier) {\n  guardrailNote = 'package_tier is not one of the fixed values - discarded by the output guardrail.';\n }\n return { underwriter, annual_premium: annualPremium, package_tier: tier, guardrail_note: guardrailNote };\n});\n\nconst validQuotes = quotes.filter((q) => !q.guardrail_note && q.underwriter && q.annual_premium != null && q.package_tier);\n\nreturn [{\n json: {\n  run_id: upstream.run_id,\n  quotes: validQuotes,\n  discarded: quotes.filter((q) => q.guardrail_note),\n  raw_stop_reason: claudeResponse.stop_reason,\n  usage: claudeResponse.usage || null,\n },\n}];\n"
+      }
+    },
+    {
+      "id": "respond-verify",
+      "name": "Return Verification",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        800
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}"
+      }
     }
   ],
   "connections": {
@@ -486,6 +621,68 @@
         [
           {
             "node": "Return Resolution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request (Verify)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request (Verify)": {
+      "main": [
+        [
+          {
+            "node": "Verify Input Guardrail Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Input Guardrail Passed?": {
+      "main": [
+        [
+          {
+            "node": "Parse Verification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Claude \u2014 Verify Quotes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude \u2014 Verify Quotes": {
+      "main": [
+        [
+          {
+            "node": "Parse Verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Verification": {
+      "main": [
+        [
+          {
+            "node": "Return Verification",
             "type": "main",
             "index": 0
           }

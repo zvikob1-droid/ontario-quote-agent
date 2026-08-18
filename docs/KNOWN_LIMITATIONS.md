@@ -167,6 +167,52 @@ challenge brief's requirement to state gaps rather than imply full coverage.
     number). The human-readable report also now opens with an explicit disclaimer that it never
     recommends which policy to choose, since "Recommended" here is Rates.ca's own package label, not
     an endorsement from this system.
+  - **Fixed this cycle: a confirmed carrier-name false positive, plus a related unbounded-climb
+    bug found while testing the fix.** Reviewing a real screenshot of the results page surfaced two
+    problems in `extractCarrierQuotes` (`rates_ca.js`/`lowestrates_ca.js`, identical logic in both):
+    (1) the site's own footer copyright text ("...RATESDOTCA Group **Ltd.** company...") matched
+    "TD" under separator-stripped substring matching, since "Ltd" contains "td" — confirmed live via
+    direct execution of the matching function against that exact string. Fixed by requiring a real
+    word-boundary match for short/ambiguous carrier codes (TD, SGI, CAA — 3 characters or fewer),
+    while longer, more distinctive names keep substring matching (needed for hyphenated logo `src`
+    slugs and stylized split text like "PEM BRIDGE"). (2) Testing the fix against a reconstructed
+    DOM fixture (built from a real screenshot, not a live run — see below) surfaced a second, real
+    bug in the same price-pairing logic: the existing size cap on the ancestor-climb search checked
+    a node's height *after* already accepting a price match found on it, so a low-information anchor
+    (e.g. a small logo in a "companies you trust" trust-badge strip, which the same screenshot also
+    shows) could still climb all the way to `<body>` and pair with a completely unrelated price. The
+    same flaw affected the basic/recommended tier-tagging climb. Fixed by checking size *before*
+    accepting a match at every step, in both climbs, in both files. Both fixes verified against a
+    fixture test (see below), not yet against a second live run.
+  - **Built this cycle, unproven live: gap-triggered vision verification for carrier extraction.**
+    The fixture test above also surfaced a case the matching-logic fix can't solve at all: a carrier
+    logo (Sonnet's, in the reconstruction) with no readable `alt`/`title`/`src` text and no nearby
+    text anywhere in its row — invisible to name-matching no matter how the matching logic is
+    refined, because there's genuinely no name anywhere in the DOM to match against. `extractCarrierQuotes`
+    now also detects this structurally: it scans for every visible price-bearing leaf that isn't
+    already inside a successfully-matched row (deduping a row that legitimately shows a price twice,
+    e.g. monthly + annual, onto one shared row rather than counting it as two gaps), and when a real
+    gap exists, `worker/lib/recipe_lib.js#verifyCarrierQuotesWithBrain` sends a screenshot — cropped
+    to the union of every row's own bounding box, built from coordinates the DOM scan already
+    computed, never a DOM container selector or the full page — to `verify_carrier_quotes`
+    (`brain/tools_schema.json`, the `oqa-verify-quotes` n8n webhook) asking Claude to read a carrier
+    name for the gap. See `docs/ARCHITECTURE.md` §7.6 for the full guardrail design (additive-only —
+    it never overwrites an already-successful DOM match, only surfaces a disagreement note for the
+    human to check against the evidence screenshot; every added entry's price must match a real
+    figure the DOM scan itself already found unmatched, never a Claude-invented number). **Honest
+    gaps:** (a) none of this — the matching fix, the climb-bounding fix, or the vision fallback —
+    has been exercised against the live site yet; all three were built and verified against a DOM
+    fixture reconstructed by hand from a screenshot the applicant shared, with a mocked brain
+    response standing in for a real Claude vision call, since no live run has reached the results
+    page again since these changes were made. (b) the image sent to Claude is pixel content, not
+    text — unlike every other brain call in this pipeline, it cannot be regex-scanned for
+    suspect-looking values before it leaves the machine. The crop-by-bounding-box design is what
+    actually keeps the adjacent vehicle/driver-info sidebar out of frame (see the redaction incident
+    below); there's no scan-based backstop behind it the way there is for every text payload.
+    (c) the n8n workflow JSON (`n8n/ontario_quote_agent.workflow.json`) has the new `oqa-verify-quotes`
+    webhook nodes defined, but — same as every other n8n change made this project — still needs to be
+    manually re-imported/pasted into the live n8n instance before this fallback can actually fire
+    against it.
 - **CAPTCHA / bot-detection.** A site that presents a CAPTCHA pauses the recipe (`lib.pauseForHuman()`)
   and hands off to me to solve it myself in the browser window — see `docs/ARCHITECTURE.md` §5.
   The recipe never solves or automates past one. A hard bot-detection wall with no human-solvable
@@ -195,6 +241,23 @@ challenge brief's requirement to state gaps rather than imply full coverage.
     already does the right thing with this: it hands off to a real human, and if that human genuinely
     can't get past it either, `blocked` is the honest, accurate status — not a gap still waiting on a
     workaround.
+  - **Also built this cycle: `lowestrates_ca.js`, a second, independent recipe to manually run
+    instead of `rates_ca` when it's blocked.** The registry already documented (from a real
+    side-by-side price comparison done 2026-08-10, not a guess) that `lowestrates_ca` is the
+    identical backend as `rates_ca` under different branding — `status: "duplicate_rate_source"`,
+    `distinct_rate_source_id: "rates_ca"`. Re-verified live this cycle at the structural level
+    (identical `/autoquote/on/vehicle` path, identical page layout, same tab flow) via
+    placeholder-data DOM inspection, matching the registry's existing conclusion.
+    `worker/recipes/lowestrates_ca.js` is `rates_ca.js` duplicated with only the landing-page entry
+    changed (a marketing homepage with its own postal-code field, vs. Rates.ca's dedicated intake
+    page) — everything from Vehicle Info onward is unchanged, since it's the same engine. This is
+    deliberately a manually-selected alternate (set via `requested_routes`), not an automatic
+    failover and not a second market data point — given it's a confirmed duplicate rate source, it's
+    meant as an alternate access path to try on its own, not something planned alongside `rates_ca`
+    in the same run. **Honest gap:** not yet exercised by an actual live run against real data — the
+    landing-page/entry adjustment is built and reasoned through, but everything past that point is
+    inherited from `rates_ca.js` on the strength of the structural match, not independently
+    re-verified field-by-field on this specific domain.
 - **Panel visibility for brokers/aggregators.** Rates.ca and Onlia's returned underwriter panel can
   change over time and is only as broad as what's live and eligible for my specific profile at
   query time. Each result records the legal underwriter actually returned, not an assumed panel

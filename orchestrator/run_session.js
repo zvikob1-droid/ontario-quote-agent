@@ -452,11 +452,32 @@ async function main() {
     process.exit(1);
   }
 
-  if (planResp.flags && planResp.flags.length > 0) {
-    logger.log('plan_flagged_anomaly', { count: planResp.flags.length });
+  // Confirmed live: Claude can call flag_new_field with an explicit
+  // self-description that nothing is actually wrong (observed_at: "N/A",
+  // description starting "no anomaly found... treat this as a no-op") -
+  // despite the tool's own description telling it not to (see
+  // brain/tools_schema.json), model variance means this can still happen,
+  // and n8n's Parse Route Plan node captures flags and route_plans
+  // independently, so a perfectly good plan can arrive in the very same
+  // response. Only that unambiguous self-declared-no-op shape is treated
+  // as non-fatal here; anything else still aborts immediately - a real
+  // flag is a genuine privacy-safety signal this system does not
+  // second-guess.
+  const NON_ANOMALY_LOCATION_RE = /^(n\/a|none|not applicable|no anomaly|nothing)$/i;
+  const genuineFlags = (planResp.flags || []).filter(
+    (f) => !NON_ANOMALY_LOCATION_RE.test(String(f.observed_at || '').trim())
+  );
+  if (genuineFlags.length > 0) {
+    logger.log('plan_flagged_anomaly', { count: genuineFlags.length });
     console.error('\nThe brain flagged something anomalous in the plan request — aborting run:');
-    for (const f of planResp.flags) console.error(' -', f.observed_at, '—', f.description);
+    for (const f of genuineFlags) console.error(' -', f.observed_at, '—', f.description);
     process.exit(1);
+  }
+  if (planResp.flags && planResp.flags.length > genuineFlags.length) {
+    logger.log('plan_self_reported_non_anomaly', { count: planResp.flags.length - genuineFlags.length });
+    console.error(
+      `\n(Note: the brain called flag_new_field ${planResp.flags.length - genuineFlags.length} time(s) but self-described it as a non-issue — not treated as fatal, continuing.)`
+    );
   }
 
   if (planResp.raw_stop_reason === 'max_tokens') {

@@ -729,6 +729,137 @@ async function resolveFieldsWithBrain(questions, { n8nBaseUrl, routeId, runId, p
 }
 
 /**
+ * Gap-triggered vision verification for multi-carrier quote extraction.
+ * extractCarrierQuotes (rates_ca.js/lowestrates_ca.js) already knows,
+ * structurally, when its own DOM scan found more distinct price-bearing
+ * rows on a results page than it could attach a carrier name to (e.g. a
+ * logo with no readable alt/title/src/nearby text) — that's `unmatchedRows`
+ * here. This sends a screenshot cropped to the union of every row's own
+ * bounding box (matched and unmatched, from `allRowRects` — never a DOM
+ * container selector, and never the full page) alongside the DOM-derived
+ * candidate list, and asks Claude to read the image and identify a carrier
+ * name for each unmatched price.
+ *
+ * Deliberately additive-only: this never overwrites an already-successfully
+ * -matched DOM entry, even if Claude's read of the image disagrees with it —
+ * DOM extraction is precise (it reads real markup) where vision reading a
+ * screenshot is not, so a disagreement is surfaced as a note for the human
+ * to check against the evidence screenshot, not silently auto-applied. Only
+ * a genuinely new carrier name attached to a price this run's own DOM scan
+ * already found *unmatched* gets added.
+ *
+ * OUTPUT GUARDRAIL: an added entry's annual_premium must exactly match one
+ * of the unmatched rows' own DOM-derived prices — Claude can name a carrier
+ * for a real price this run found on the page, but cannot introduce a
+ * dollar figure that isn't already present in the page's own DOM text.
+ * package_tier must be one of the two fixed values. underwriter must be a
+ * short plain string that itself passes the same suspect-pattern scan the
+ * outbound payload does — Claude's own output is never trusted more than
+ * input data would be. At most `candidateQuotes.length + unmatchedRows.length`
+ * entries are ever considered — Claude cannot report more quotes exist than
+ * the worker's own DOM scan found real row containers for.
+ *
+ * The crop is built from row bounding boxes, not a DOM region, precisely so
+ * it cannot accidentally include the sidebar (vehicle/driver panel) that
+ * sits beside the results on this site — see docs/KNOWN_LIMITATIONS.md for
+ * the earlier real screenshot name-leak this is deliberately designed
+ * around. It's still pixel content, though, so unlike a text payload it
+ * cannot be regex-scanned before it leaves this machine — that's a genuine,
+ * disclosed limitation of this fallback, not a false guarantee.
+ */
+async function verifyCarrierQuotesWithBrain(page, { candidateQuotes, unmatchedRows, allRowRects }, ctx = {}) {
+  const { n8nBaseUrl, routeId, runId } = ctx;
+  const fallback = { quotes: candidateQuotes, notes: [] };
+
+  if (!n8nBaseUrl) {
+    logger.log('verify_quotes_no_n8n_url', { routeId });
+    return fallback;
+  }
+  const unmatchedPrices = new Set(unmatchedRows.map((r) => r.annual_premium).filter((v) => typeof v === 'number' && Number.isFinite(v)));
+  if (unmatchedPrices.size === 0 || !allRowRects || allRowRects.length === 0) return fallback;
+
+  const maxRows = candidateQuotes.length + unmatchedRows.length;
+  const PAD = 16;
+  const clipX = Math.max(0, Math.min(...allRowRects.map((r) => r.x)) - PAD);
+  const clipY = Math.max(0, Math.min(...allRowRects.map((r) => r.y)) - PAD);
+  const clipRight = Math.max(...allRowRects.map((r) => r.x + r.width)) + PAD;
+  const clipBottom = Math.max(...allRowRects.map((r) => r.y + r.height)) + PAD;
+  const clip = { x: clipX, y: clipY, width: clipRight - clipX, height: clipBottom - clipY };
+
+  let imageBase64;
+  try {
+    const buffer = await page.screenshot({ clip, type: 'png' });
+    imageBase64 = buffer.toString('base64');
+  } catch (e) {
+    logger.log('verify_quotes_screenshot_failed', { routeId, runId, message: e.message });
+    return fallback;
+  }
+
+  const payloadText = JSON.stringify({ candidate_quotes: candidateQuotes });
+  if (RESOLVE_FIELDS_SUSPECT_PATTERNS.some((p) => p.test(payloadText))) {
+    logger.log('verify_quotes_blocked_by_worker_guardrail', { routeId, runId });
+    return fallback;
+  }
+
+  let data;
+  try {
+    const res = await fetch(`${n8nBaseUrl}/webhook/oqa-verify-quotes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        run_id: runId,
+        system_prompt: SYSTEM_PROMPT,
+        tools: TOOLS_SCHEMA.tools,
+        candidate_quotes: candidateQuotes,
+        unmatched_row_count: unmatchedRows.length,
+        image_base64: imageBase64,
+        image_media_type: 'image/png',
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    logger.log('verify_quotes_call_failed', { routeId, runId, message: e.message });
+    return fallback;
+  }
+  if (data.error || data.blocked_by_input_guardrail || !Array.isArray(data.quotes)) {
+    logger.log('verify_quotes_no_usable_result', { routeId, runId, message: data.error || null });
+    return fallback;
+  }
+
+  const VALID_TIERS = new Set(['basic', 'recommended']);
+  const byUnderwriterLower = new Map(candidateQuotes.map((q) => [q.underwriter.toLowerCase(), q]));
+  const added = [];
+  const notes = [];
+  const seenAdds = new Set();
+
+  for (const q of data.quotes.slice(0, maxRows)) {
+    const underwriter = typeof q.underwriter === 'string' ? q.underwriter.trim() : '';
+    const annualPremium = typeof q.annual_premium === 'number' ? q.annual_premium : null;
+    const tier = VALID_TIERS.has(q.package_tier) ? q.package_tier : null;
+    if (!underwriter || underwriter.length > 60 || !tier || annualPremium == null) continue;
+    if (RESOLVE_FIELDS_SUSPECT_PATTERNS.some((p) => p.test(underwriter))) continue;
+
+    const existing = byUnderwriterLower.get(underwriter.toLowerCase());
+    if (existing) {
+      if (existing.annual_premium !== annualPremium) {
+        notes.push(`Vision verification disagrees with DOM extraction for ${underwriter}: DOM extraction found $${existing.annual_premium}/yr, image reading suggests $${annualPremium}/yr — DOM value kept as-is; check the evidence screenshot to confirm the real figure.`);
+      }
+      continue;
+    }
+    if (!unmatchedPrices.has(annualPremium)) continue;
+    const key = `${underwriter.toLowerCase()}|${annualPremium}`;
+    if (seenAdds.has(key)) continue;
+    seenAdds.add(key);
+    added.push({ underwriter, annual_premium: annualPremium, package_tier: tier, is_recommended: tier === 'recommended' });
+  }
+
+  if (added.length > 0) {
+    logger.log('verify_quotes_recovered_rows', { routeId, runId, count: added.length });
+  }
+  return { quotes: [...candidateQuotes, ...added], notes };
+}
+
+/**
  * Structural-only DOM scan used by fillPlanningResilient/selectPlanningResilient
  * below: every currently visible <label> on the page paired with its
  * adjacent select/input and (for a select) the site's own option *text* -
@@ -992,6 +1123,7 @@ module.exports = {
   fillSensitive,
   selectSensitive,
   resolveFieldsWithBrain,
+  verifyCarrierQuotesWithBrain,
   scanVisibleFormQuestions,
   checkForAdvisoryBanner,
   snapshotPageText,
