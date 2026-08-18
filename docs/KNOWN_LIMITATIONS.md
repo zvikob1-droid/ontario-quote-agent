@@ -304,3 +304,33 @@ challenge brief's requirement to state gaps rather than imply full coverage.
   each route was actually checked during this build, not a guarantee that panels or eligibility
   are unchanged afterward — per the brief, panel membership changes and every row needs
   re-verification over time.
+- **Fixed this cycle: the comparison step silently dropped a real, successful multi-carrier
+  result.** First live run of `lowestrates_ca` reached `quoted_non_comparable` and genuinely
+  produced 8 carrier quotes (confirmed independently — the applicant received a results email
+  from the aggregator) — but the run report and summary came back completely empty, with no
+  error surfaced anywhere in the pipeline. Root cause, found by reading the worker log directly:
+  the `oqa-compare` n8n call hit `stop_reason: max_tokens` and never called `submit_comparison` at
+  all, so the orchestrator received zero results — not because the comparison was hard, but because
+  Claude Sonnet 5 runs adaptive thinking *by default* even with no `thinking` config at all
+  (confirmed via the model docs — this differs from Opus 4.7/4.8, where omitting `thinking` means
+  none), and thinking tokens draw from the same `max_tokens` budget as the actual output. The
+  Compare call's `max_tokens` (8192) was sized for a single-quote result, not an 8-row aggregator
+  result with full coverage/discounts objects per row — thinking alone could consume enough of that
+  budget to leave no room for the tool call. Fixed in `n8n/ontario_quote_agent.workflow.json`'s
+  `Build Claude Request (Compare)` node: `max_tokens` raised to 16000, and `output_config: {effort:
+  "medium"}` added explicitly — comparison is a normalization/formatting task (the system prompt
+  already forbids Claude from re-deriving a worker-extracted premium), not one that needs deep
+  reasoning depth, so capping effort meaningfully shrinks the thinking share of the budget rather
+  than just raising the ceiling and hoping. The HTTP node's own timeout was also raised (90s → 110s,
+  still under the orchestrator's 120s default) since a larger `max_tokens` means more possible
+  generation time. **Not yet re-verified against a second real multi-carrier run** — this run
+  hadn't completed by the time the fix was made, so the fix is reasoned from the log evidence, not
+  confirmed against a second success.
+- **Honest gap this run exposed: an empty result can currently look identical to "nothing to
+  report" and to "something silently broke."** The report has no distinct state for "a route
+  quoted successfully but the comparison step failed" versus "no route produced any data" — both
+  render as the same empty summary. `orchestrator/run_session.js` doesn't currently surface the
+  n8n retry/failure detail (`n8n_call_retry`'s `apiErrorType`/`message`) into the run report itself;
+  it's only visible in `worker/logs/worker.jsonl`. Diagnosing this required reading the raw log,
+  not the report. Worth a future fix: surface a compare-step failure explicitly in the report
+  rather than only in the log.

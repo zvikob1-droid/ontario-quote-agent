@@ -67,6 +67,16 @@ calling `submit_route_plan`. Rules:
   already planned. Related legal underwriters under common ownership (e.g.
   Intact and belairdirect) price independently and can return genuinely
   different premiums for the same applicant; both are worth attempting.
+  This duplicate-avoidance check only applies when you're actually choosing
+  *among* multiple candidate routes in the registry you were given. If that
+  registry contains exactly one route for this run and it's marked
+  `duplicate_rate_source`, plan it anyway — the registry you receive is
+  already pre-filtered to a specific session's `requested_routes` before it
+  reaches you, so a single remaining route is the user's own deliberate,
+  explicit choice to test that route on its own, not a menu you're choosing
+  a "better" option from. Refusing to plan the only route offered produces
+  an empty, useless run instead of respecting that choice — worse than the
+  redundancy this check exists to prevent.
 - If the registry doesn't have enough routes verified/active for a channel
   the user clearly wants (e.g. they ask to also check a market currently
   `unresolved`), say so in `notes` — don't silently substitute something

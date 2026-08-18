@@ -74,7 +74,9 @@ async function runRoute(recipes, routeId, params, vaultPassphrase) {
 
   let browser;
   try {
-    browser = await chromium.launch({ headless: HEADLESS });
+    // --start-maximized only affects the actual OS window when headful; harmless
+    // (and ignored) under headless, so no need to branch on HEADLESS here.
+    browser = await chromium.launch({ headless: HEADLESS, args: ['--start-maximized'] });
   } catch (e) {
     // A launch failure is an infrastructure problem, not a market outcome —
     // keep it distinguishable from a route's own result via failure_reason,
@@ -88,7 +90,12 @@ async function runRoute(recipes, routeId, params, vaultPassphrase) {
     };
   }
 
-  const page = await browser.newPage();
+  // viewport: null lets the rendered page fill the actual (now maximized) OS
+  // window instead of staying clamped to Playwright's fixed default viewport
+  // (1280x720) inside a larger window - without this, --start-maximized only
+  // resizes the window chrome and the page content still looks minimized.
+  const context = await browser.newContext({ viewport: null });
+  const page = await context.newPage();
   page.setDefaultTimeout(ACTION_TIMEOUT_MS);
   page.setDefaultNavigationTimeout(NAV_TIMEOUT_MS);
 
