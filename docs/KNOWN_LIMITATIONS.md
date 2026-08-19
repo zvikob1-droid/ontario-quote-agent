@@ -254,10 +254,19 @@ challenge brief's requirement to state gaps rather than imply full coverage.
     deliberately a manually-selected alternate (set via `requested_routes`), not an automatic
     failover and not a second market data point — given it's a confirmed duplicate rate source, it's
     meant as an alternate access path to try on its own, not something planned alongside `rates_ca`
-    in the same run. **Honest gap:** not yet exercised by an actual live run against real data — the
-    landing-page/entry adjustment is built and reasoned through, but everything past that point is
-    inherited from `rates_ca.js` on the strength of the structural match, not independently
-    re-verified field-by-field on this specific domain.
+    in the same run. **Confirmed live, twice** (evidence and a screen recording committed under
+    `worker/evidence/lowestrates_ca/`): the recipe fills the full form, handles the human consent
+    checkpoint correctly, submits, and reaches `quoted_non_comparable` with real multi-carrier
+    quotes both times — the field-by-field inheritance from `rates_ca.js` holds up on this domain,
+    not just structurally. LowestRates.ca also emails the applicant its own copy of the quote
+    results on completion, independent of anything this system captures — useful outside
+    confirmation that the site itself considers the submission real and complete. **Honest gap
+    that remains:** neither live run has a corresponding written run report — the first hit the
+    Compare-step `max_tokens` bug documented below; the second's worker log stops right after
+    `route_finished` with no Compare-step call logged at all (success or failure), meaning the
+    orchestrator process ended before reaching that step. So the recipe itself is now live-proven,
+    but a full run — worker through Compare through a written report — has not yet been confirmed
+    to complete successfully for this route.
 - **Panel visibility for brokers/aggregators.** Rates.ca and Onlia's returned underwriter panel can
   change over time and is only as broad as what's live and eligible for my specific profile at
   query time. Each result records the legal underwriter actually returned, not an assumed panel
